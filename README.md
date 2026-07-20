@@ -184,3 +184,79 @@ Ver los commits registrados por el padre:
 ```powershell
 git submodule status --recursive
 ```
+
+## Configuración común de la solución
+
+Los valores no sensibles compartidos se encuentran en:
+
+- `config/naming.env`: identidad, prefijo, sufijo, ambiente, región y ruta base SSM.
+- `config/tags.env`: etiquetas obligatorias para inventario y análisis de costos.
+- `.env.example`: ejemplo de sobrescrituras locales por cliente o ambiente.
+
+Para la instalación actual, el repositorio padre se llama `fsg-elearning-platform`, pero los recursos AWS utilizarán el prefijo `epico`. Los nombres de los repositorios y carpetas hijos no cambian.
+
+La convención inicial es:
+
+```text
+epico-<servicio>-production
+```
+
+Ejemplos:
+
+```text
+epico-auth-production
+epico-course-production
+epico-videos-production
+```
+
+### Sobrescrituras locales
+
+Crear un `.env` local únicamente cuando sea necesario cambiar valores de la configuración base:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+El `.env` real está ignorado por Git. No debe contener Account IDs, access keys, Client Secrets, tokens, contraseñas ni URLs generadas por AWS. Los secretos se almacenarán posteriormente en AWS Secrets Manager.
+
+### Cargar la configuración
+
+Para cargar los valores en la sesión actual de PowerShell:
+
+```powershell
+. .\scripts\load-environment.ps1
+```
+
+El orden de precedencia es:
+
+```text
+config/naming.env
+-> config/tags.env
+-> .env local, si existe
+```
+
+### Validar la configuración
+
+Ejecutar antes de empaquetar o construir cualquier proyecto:
+
+```powershell
+.\scripts\validate-environment.ps1
+```
+
+La validación comprueba variables obligatorias, formato de nombres, región `us-east-1`, coherencia de cliente/ambiente, ruta SSM y ausencia de variables con nombres sensibles.
+
+`TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.
+
+Los tags comunes definidos son:
+
+```text
+Solution=E-Learning
+Project=FSG-Elearning
+Client=EPICO
+Environment=production
+Owner=FSG
+ManagedBy=IaC
+CostCenter=PENDING
+```
+
+Cada microservicio o componente agregará posteriormente su tag `Service`, por ejemplo `Service=videos`.
