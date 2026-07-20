@@ -260,3 +260,15 @@ CostCenter=PENDING
 ```
 
 Cada microservicio o componente agregará posteriormente su tag `Service`, por ejemplo `Service=videos`.
+
+## Seguridad de secretos
+
+El contrato de almacenamiento y consumo se documenta en `config/secrets.md`. Los valores secretos deben residir en AWS Secrets Manager; los repositorios solo pueden contener sus nombres o ARNs.
+
+Ejecutar el escaneo de archivos rastreados antes de confirmar cambios de configuración:
+
+```powershell
+.\scripts\scan-secrets.ps1
+```
+
+El escaneo bloquea AWS Access Key IDs, claves privadas y asignaciones directas de AWS Secret Access Keys o Cognito Client Secrets. Esta verificación inspecciona el estado actual de los repositorios; no reemplaza la rotación de credenciales que hayan aparecido previamente en el historial Git.
