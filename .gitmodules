@@ -1,0 +1,40 @@
+[submodule "services/ms-aprendamosgye-auth"]
+	path = services/ms-aprendamosgye-auth
+	url = https://github.com/funsg-org/ms-aprendamosgye-auth.git
+	branch = master
+[submodule "services/ms-aprendamosgye-course"]
+	path = services/ms-aprendamosgye-course
+	url = https://github.com/funsg-org/ms-aprendamosgye-course.git
+	branch = master
+[submodule "services/ms-aprendamosgye-menu"]
+	path = services/ms-aprendamosgye-menu
+	url = https://github.com/funsg-org/ms-aprendamosgye-menu.git
+	branch = main
+[submodule "services/ms-aprendamosgye-metrics"]
+	path = services/ms-aprendamosgye-metrics
+	url = https://github.com/funsg-org/ms-aprendamosgye-metrics.git
+	branch = main
+[submodule "services/ms-aprendamosgye-subscriptions"]
+	path = services/ms-aprendamosgye-subscriptions
+	url = https://github.com/funsg-org/ms-aprendamosgye-subscriptions.git
+	branch = master
+[submodule "services/ms-aprendamosgye-users"]
+	path = services/ms-aprendamosgye-users
+	url = https://github.com/funsg-org/ms-aprendamosgye-users.git
+	branch = main
+[submodule "services/ms-aprendamosgye-videos"]
+	path = services/ms-aprendamosgye-videos
+	url = https://github.com/funsg-org/ms-aprendamosgye-videos.git
+	branch = main
+[submodule "frontends/aprendamosgye_app"]
+	path = frontends/aprendamosgye_app
+	url = https://github.com/funsg-org/aprendamosgye_app.git
+	branch = main
+[submodule "frontends/aprendamosgye_react"]
+	path = frontends/aprendamosgye_react
+	url = https://github.com/funsg-org/aprendamosgye_react.git
+	branch = main
+[submodule "frontends/ms-aprendamosgye-admin-web"]
+	path = frontends/ms-aprendamosgye-admin-web
+	url = https://github.com/funsg-org/ms-aprendamosgye-admin-web.git
+	branch = main

@@ -1,0 +1,23 @@
+# Configuración local y credenciales
+.env
+.env.*
+!.env.example
+
+# IDE y sistema operativo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Artefactos del repositorio orquestador
+node_modules/
+dist/
+build/
+.serverless/
+*.log
+
+# Documentos de trabajo locales
+aprendamosgye-deployment-plan/
+
+# Bitácora local obligatoria de Codex
+.changes/
