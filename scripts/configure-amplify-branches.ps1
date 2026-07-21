@@ -46,4 +46,3 @@ try {
     }
 } finally { Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host "Ramas configuradas. Auto-build: $([bool]$EnableAutoBuild); builds: $([bool]$StartBuild)" -ForegroundColor Green
-

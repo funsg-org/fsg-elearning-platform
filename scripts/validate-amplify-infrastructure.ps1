@@ -17,4 +17,3 @@ if ($AwsProfile) { $arguments += @('--profile',$AwsProfile) }
 & aws @arguments | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'AWS CloudFormation rechazo la plantilla de Amplify.' }
 Write-Host 'Plantilla de Amplify valida; no se desplego ningun recurso.' -ForegroundColor Green
-
