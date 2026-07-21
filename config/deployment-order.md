@@ -37,6 +37,8 @@ La opción `-SkipRemoteChecks` omite únicamente `git ls-remote`; no omite ident
 
 El preflight verifica los permisos de lectura que puede comprobar sin mutaciones (`STS`, consulta del secreto y validación de CloudFormation). Los permisos de creación específicos de cada recurso se evalúan finalmente cuando CloudFormation crea el change set; comprobarlos por anticipado requeriría simulación IAM adicional o una operación AWS.
 
+Los siete microservicios declaran `frameworkVersion: '~4.39.0'`. Esto evita actualizaciones de minor o major durante un despliegue y permite únicamente parches compatibles de la línea 4.39.
+
 ## Límites deliberados
 
 - No crea la cuenta AWS.

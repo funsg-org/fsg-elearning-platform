@@ -77,8 +77,10 @@ foreach ($service in $services) {
     foreach ($requiredFile in @('package.json','package-lock.json','serverless.yml')) {
         if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot "$service\$requiredFile") -PathType Leaf)) { throw "Falta $requiredFile en $service." }
     }
+    $serverlessConfiguration = Get-Content -LiteralPath (Join-Path $repositoryRoot "$service\serverless.yml") -Raw
+    if ($serverlessConfiguration -notmatch '(?m)^frameworkVersion:\s*[''"]~4\.39\.0[''"]\s*$') { throw "$service debe declarar frameworkVersion '~4.39.0'." }
 }
-Add-Check 'Contratos Serverless y lockfiles presentes en los siete microservicios'
+Add-Check "Contratos Serverless fijados a ~4.39.0 y lockfiles presentes en los siete microservicios"
 foreach ($frontend in @('frontends\aprendamosgye_react','frontends\ms-aprendamosgye-admin-web\Aprendamos_Admin')) {
     foreach ($requiredFile in @('package.json','package-lock.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot "$frontend\$requiredFile") -PathType Leaf)) { throw "Falta $requiredFile en $frontend." }
