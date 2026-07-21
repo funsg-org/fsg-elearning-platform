@@ -80,9 +80,19 @@ foreach ($service in $services) {
         if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot "$service\$requiredFile") -PathType Leaf)) { throw "Falta $requiredFile en $service." }
     }
     $serverlessConfiguration = Get-Content -LiteralPath (Join-Path $repositoryRoot "$service\serverless.yml") -Raw
-    if ($serverlessConfiguration -notmatch '(?m)^frameworkVersion:\s*[''"]~4\.39\.0[''"]\s*$') { throw "$service debe declarar frameworkVersion '~4.39.0'." }
+    if ($serverlessConfiguration -notmatch '(?m)^frameworkVersion:\s*[''"]4[''"]\s*$') { throw "$service debe declarar frameworkVersion '4'." }
+    $package=Get-Content -LiteralPath (Join-Path $repositoryRoot "$service\package.json") -Raw|ConvertFrom-Json
+    if ($package.devDependencies.serverless -ne '4.39.0') { throw "$service debe fijar serverless 4.39.0 como devDependency raiz." }
+    if ($package.devDependencies.'serverless-plugin-typescript') { throw "$service conserva serverless-plugin-typescript, incompatible y no utilizado." }
 }
-Add-Check "Contratos Serverless fijados a ~4.39.0 y lockfiles presentes en los siete microservicios"
+Add-Check "Serverless 4.39.0 reproducible y contratos ~4.39.0 verificados en los siete microservicios"
+$serverlessDataText=($services|ForEach-Object { Get-Content -LiteralPath (Join-Path $repositoryRoot "$_\serverless.yml") -Raw }) -join [Environment]::NewLine
+$tableCount=([regex]::Matches($serverlessDataText,'Type:\s*AWS::DynamoDB::Table')).Count
+$retainCount=([regex]::Matches($serverlessDataText,'DeletionPolicy:\s*Retain')).Count
+$replaceRetainCount=([regex]::Matches($serverlessDataText,'UpdateReplacePolicy:\s*Retain')).Count
+$pitrCount=([regex]::Matches($serverlessDataText,'PointInTimeRecoveryEnabled:\s*true')).Count
+if ($tableCount -ne 10 -or $retainCount -lt 10 -or $replaceRetainCount -lt 10 -or $pitrCount -ne 10) { throw "Proteccion DynamoDB incompleta: tables=$tableCount deletion=$retainCount replacement=$replaceRetainCount pitr=$pitrCount." }
+Add-Check 'Retencion y PITR verificadas en las diez tablas DynamoDB'
 foreach ($frontend in @('frontends\aprendamosgye_react','frontends\ms-aprendamosgye-admin-web\Aprendamos_Admin')) {
     foreach ($requiredFile in @('package.json','package-lock.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot "$frontend\$requiredFile") -PathType Leaf)) { throw "Falta $requiredFile en $frontend." }

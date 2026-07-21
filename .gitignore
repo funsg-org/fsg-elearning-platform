@@ -22,6 +22,7 @@ dist/
 build/
 .serverless/
 *.log
+artifacts/recovery/
 
 # Documentos de trabajo locales
 aprendamosgye-deployment-plan/

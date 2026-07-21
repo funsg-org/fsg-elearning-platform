@@ -165,6 +165,12 @@ $preflightArguments = @{
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $preflightArguments.AwsProfile=$AwsProfile }
 & (Join-Path $PSScriptRoot 'test-deployment-readiness.ps1') @preflightArguments
 
+foreach ($service in $services) {
+    $servicePath=Join-Path $repositoryRoot $service
+    Write-Host "Instalando dependencias bloqueadas de $service..." -ForegroundColor Cyan
+    Invoke-CheckedCommand -Executable 'npm' -Arguments @('ci','--ignore-scripts') -WorkingDirectory $servicePath -FailureMessage "npm ci falló en $service. No se modificó AWS."
+}
+
 $amplifyBootstrapArguments = @{
     Execute = $true
     ApproveChangeSets = $true
@@ -210,10 +216,21 @@ if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $exportPlatformArguments.A
 & (Join-Path $PSScriptRoot 'validate-environment.ps1') -OutputsFile $platformOutputsFile -RequirePlatformOutputs
 
 . (Join-Path $PSScriptRoot 'load-environment.ps1') -OutputsFile $platformOutputsFile -Quiet | Out-Null
+$recoveryRunDirectory=Join-Path $repositoryRoot ("artifacts\recovery\"+(Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss'))
 foreach ($service in $services) {
     $servicePath = Join-Path $repositoryRoot $service
+    $component=(Split-Path $servicePath -Leaf) -replace '^ms-aprendamosgye-',''
+    $serverlessStackName="ms-$($env:RESOURCE_PREFIX)-$component-$($env:ENVIRONMENT)"
+    $manifestFile=Join-Path $recoveryRunDirectory "$component-before.json"
+    & (Join-Path $PSScriptRoot 'capture-service-recovery-manifest.ps1') -StackName $serverlessStackName -ServicePath $servicePath -OutputFile $manifestFile -Region $Region
     Write-Host "Desplegando $service..." -ForegroundColor Cyan
-    Invoke-CheckedCommand -Executable 'npx' -Arguments @('serverless', 'deploy', '--stage', $env:ENVIRONMENT, '--region', $Region) -WorkingDirectory $servicePath -FailureMessage "Falló el despliegue de $service."
+    try {
+        Invoke-CheckedCommand -Executable 'npx' -Arguments @('serverless', 'deploy', '--stage', $env:ENVIRONMENT, '--region', $Region) -WorkingDirectory $servicePath -FailureMessage "Falló el despliegue de $service."
+    } catch {
+        $instructionsFile=Join-Path $recoveryRunDirectory "$component-RECOVERY.md"
+        & (Join-Path $PSScriptRoot 'write-service-recovery-instructions.ps1') -ServiceName $service -ServicePath $servicePath -StackName $serverlessStackName -ManifestFile $manifestFile -OutputFile $instructionsFile
+        throw
+    }
 }
 
 $exportServicesArguments = @{ Region = $Region; ResourcePrefix = $env:RESOURCE_PREFIX; Environment = $env:ENVIRONMENT; OutputFile = $serviceOutputsFile }

@@ -42,7 +42,7 @@ La opción `-SkipRemoteChecks` omite únicamente `git ls-remote`; no omite ident
 
 El preflight verifica los permisos de lectura que puede comprobar sin mutaciones (`STS`, consulta del secreto y validación de CloudFormation). Los permisos de creación específicos de cada recurso se evalúan finalmente cuando CloudFormation crea el change set; comprobarlos por anticipado requeriría simulación IAM adicional o una operación AWS.
 
-Los siete microservicios declaran `frameworkVersion: '~4.39.0'`. Esto evita actualizaciones de minor o major durante un despliegue y permite únicamente parches compatibles de la línea 4.39.
+Los siete microservicios fijan el paquete npm `serverless` en `4.39.0` y declaran `frameworkVersion: '4'`. El paquete hace reproducible el binario y el contrato impide ejecutar versiones v3 o v5.
 
 ## Límites deliberados
 
@@ -60,3 +60,5 @@ Al finalizar, las variables quedan cargadas en ambas ramas de preparación. La p
 Las validaciones estructurales que no requieren cuenta AWS se ejecutan también en GitHub Actions. Consulte `config/continuous-validation.md`.
 
 Los tres stacks CloudFormation directos usan una compuerta de change sets documentada en `config/change-set-approval.md`.
+
+Antes de cada stack Serverless se captura un manifiesto local de recuperación. Consulte `config/recovery.md`.
