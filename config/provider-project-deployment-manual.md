@@ -180,3 +180,108 @@ Probar salud de APIs, consola administrativa, portal público, rechazo de usuari
 - Solicitar al cliente revocar la sesión/asignación temporal.
 - Eliminar perfiles locales temporales cuando ya no sean necesarios.
 - Conservar únicamente documentación operativa autorizada.
+
+## 16. Procedimiento interno para futuras actualizaciones
+
+### 16.1 Registrar y acotar la solicitud
+
+Crear un ticket interno que enlace la solicitud aprobada del cliente y defina:
+
+- Repositorios/componentes afectados.
+- Tipo de cambio: código, configuración, infraestructura, dependencias o datos.
+- Criterios de aceptación.
+- Riesgos y compatibilidad hacia atrás.
+- Ventana, responsables y canal de incidentes.
+- Plan de rollback probado.
+
+No iniciar desarrollo o despliegue con alcance ambiguo.
+
+### 16.2 Preparar la versión en repositorios privados
+
+1. Actualizar las ramas estables locales.
+2. Crear una rama de feature/corrección con nombre común en los repositorios afectados.
+3. Implementar y probar sin modificar `main` directamente.
+4. Ejecutar build, pruebas, escaneo de secretos y validaciones de infraestructura.
+5. Commit y push primero en cada repositorio hijo.
+6. Actualizar los gitlinks del padre con commits exactos.
+7. Ejecutar CI del padre y obtener aprobación del cambio.
+8. Registrar una versión candidata y la lista exacta de commits internos.
+
+El cliente recibe el alcance y la versión funcional, no hashes internos ni acceso al código salvo obligación contractual expresa.
+
+### 16.3 Solicitar acceso temporal nuevo
+
+Solicitar al cliente una nueva asignación SSO temporal para la ventana. Nunca reutilizar credenciales copiadas de una intervención anterior. Verificar:
+
+```powershell
+aws sso login --profile epico-provider
+aws sts get-caller-identity --profile epico-provider
+```
+
+Luego asumir `epico-deployment-production` y confirmar Account ID/región. Si faltan permisos, documentar la acción IAM exacta y enviar al cliente un Change Set de la plantilla; no pedir permisos administrativos genéricos.
+
+### 16.4 Construir el plan de cambio
+
+Clasificar el despliegue:
+
+- Solo microservicio: desplegar únicamente los servicios afectados y dependencias contractuales.
+- Solo frontend: publicar únicamente la aplicación/rama afectada.
+- Contrato compartido: coordinar primero infraestructura/outputs y después consumidores.
+- Infraestructura base: el cliente ejecuta el Change Set con asistencia FSG.
+- Cambio destructivo o de datos: requiere aprobación adicional y respaldo verificable.
+
+Documentar orden, duración, verificación y punto de no retorno.
+
+### 16.5 Preflight y recuperación
+
+Antes de escribir en AWS:
+
+- Confirmar repositorios limpios y commits aprobados.
+- Ejecutar `npm ci`, builds y pruebas.
+- Validar outputs y secretos sin mostrar valores.
+- Consultar estado de stacks y jobs Amplify.
+- Capturar manifiesto de recuperación de cada servicio afectado.
+- Confirmar PITR de tablas y versionado S3.
+- Guardar la referencia del último despliegue exitoso.
+
+### 16.6 Desplegar selectivamente
+
+Durante la ventana:
+
+1. Anunciar inicio al cliente.
+2. Desplegar un componente a la vez.
+3. Revisar estado CloudFormation/Lambda/API antes del siguiente.
+4. Exportar outputs si cambió algún contrato.
+5. Actualizar variables Amplify solamente si corresponde.
+6. Publicar el frontend afectado después de sus APIs.
+7. Ejecutar smoke tests inmediatamente.
+8. Detenerse ante el primer error.
+
+No ejecutar el despliegue completo si el alcance aprobado es parcial, salvo dependencia técnica documentada.
+
+### 16.7 Reversión
+
+Si falla una verificación:
+
+- No continuar con componentes pendientes.
+- Esperar/validar rollback automático de CloudFormation.
+- Para código, redeployar el commit anterior aprobado.
+- Para frontend, reconstruir la versión anterior o revertir la rama autorizada.
+- Para DynamoDB, restaurar PITR a una tabla nueva y coordinar el cambio de referencia.
+- Para S3, recuperar por `VersionId`.
+- No usar `serverless remove`.
+
+Registrar tiempos, causa, recursos afectados y decisión del cliente cuando existan datos involucrados.
+
+### 16.8 Entrega y cierre
+
+Después de pruebas técnicas, entregar al cliente:
+
+- Componentes y funcionalidades actualizadas.
+- Hora inicial/final y resultado.
+- URLs o cambios operativos visibles.
+- Resultado de pruebas y monitoreo.
+- Incidentes, rollback o pendientes.
+- Recomendación de observación posterior.
+
+Solicitar aceptación funcional y revocación del permiso temporal. Cerrar sesión AWS, limpiar variables/perfiles temporales, proteger manifiestos y actualizar la bitácora interna de FSG.

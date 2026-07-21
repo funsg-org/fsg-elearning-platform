@@ -298,3 +298,91 @@ Después de aceptación:
 2. Mantener el rol `epico-deployment-production` solo si habrá soporte futuro; su confianza debe apuntar a una identidad controlada.
 3. Confirmar que FSG no conserva credenciales del cliente.
 4. Mantener procedimientos de soporte para autorizar nuevas sesiones temporales.
+
+## 21. Futuras actualizaciones solicitadas al proveedor
+
+Cada actualización se trata como una nueva intervención controlada. El permiso temporal usado en la instalación inicial no debe permanecer abierto indefinidamente.
+
+### 21.1 Solicitud y aprobación
+
+El cliente entrega a FSG una solicitud que incluya:
+
+- Descripción funcional o técnica del cambio.
+- Ambiente afectado.
+- Usuarios o procesos impactados.
+- Fecha objetivo y ventana autorizada.
+- Responsable de aceptación del cliente.
+- Restricciones de indisponibilidad.
+- Dominio, integraciones o datos afectados, si corresponde.
+
+FSG devuelve alcance, componentes que cambiarán, riesgos, duración estimada, plan de pruebas y plan de reversión. El cliente aprueba por escrito antes de abrir acceso AWS.
+
+### 21.2 Crear un nuevo acceso temporal
+
+El cliente crea una nueva sesión o asignación temporal siguiendo la sección 7. Se recomienda reutilizar el rol limitado `epico-deployment-production`, pero autorizar nuevamente a una identidad temporal FSG.
+
+Antes de la ventana, entregar únicamente:
+
+- Account ID y región.
+- ARN del rol de despliegue.
+- Datos SSO de la nueva asignación temporal.
+- Número o identificador de la solicitud aprobada.
+- Ventana durante la cual el acceso estará habilitado.
+
+Si el cambio exige permisos que el rol actual no posee, FSG debe justificar las acciones y recursos exactos. El cliente revisa una actualización de la plantilla IAM mediante Change Set. No se concede `AdministratorAccess` para resolver un permiso faltante.
+
+### 21.3 Estado y respaldos previos
+
+Antes de autorizar cambios, el cliente y FSG verifican:
+
+- Stacks CloudFormation en estado estable.
+- Alarmas/incidentes abiertos.
+- PITR activo en DynamoDB.
+- Versionado activo en S3.
+- Estado de Amplify, Lambda y APIs.
+- Fecha del último respaldo o manifiesto de recuperación.
+- Costos o cuotas que puedan bloquear el cambio.
+
+Para cambios de datos de alto riesgo, solicitar respaldo/exportación adicional antes de continuar.
+
+### 21.4 Corresponde al proveedor: publicar la actualización
+
+FSG desarrolla y prueba el cambio en sus repositorios privados. Durante la ventana autorizada:
+
+1. Verifica cuenta y rol temporal.
+2. Confirma los commits y componentes aprobados.
+3. Ejecuta preflight y captura recuperación.
+4. Revisa cualquier Change Set de infraestructura.
+5. Despliega solamente los microservicios afectados.
+6. Configura y publica únicamente los frontends afectados.
+7. Ejecuta pruebas técnicas y entrega resultados.
+
+El cliente no recibe ni ejecuta código fuente. Si la actualización incluye infraestructura base, el cliente ejecuta el Change Set correspondiente con asistencia FSG, igual que en la instalación inicial.
+
+### 21.5 Pruebas y aceptación
+
+El cliente ejecuta las pruebas funcionales acordadas y registra:
+
+- Versión/fecha instalada.
+- Funcionalidades verificadas.
+- Resultado de regresión.
+- Incidentes encontrados.
+- Aceptación, rechazo o decisión de rollback.
+
+No cerrar la ventana hasta confirmar monitoreo básico de APIs, frontends, autenticación, datos y contenido multimedia.
+
+### 21.6 Fallo y reversión
+
+Ante un fallo, FSG detiene despliegues posteriores y aplica el plan aprobado. Según el componente puede implicar rollback de CloudFormation, redeploy del commit anterior, restauración DynamoDB a una tabla nueva o recuperación de una versión S3. No usar `serverless remove` como rollback.
+
+El cliente autoriza cualquier restauración que cambie datos y registra el incidente.
+
+### 21.7 Cierre de la actualización
+
+Después de la aceptación:
+
+1. El cliente revoca la asignación SSO o elimina las Access Keys temporales.
+2. FSG cierra sesión y elimina perfiles/variables temporales.
+3. FSG entrega inventario de componentes actualizados, fecha, resultado y observaciones.
+4. El cliente actualiza el acta operativa y conserva la aprobación.
+5. Ambas partes registran pendientes o deuda técnica para una intervención futura.
