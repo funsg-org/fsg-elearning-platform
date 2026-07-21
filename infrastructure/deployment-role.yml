@@ -64,9 +64,9 @@ Resources:
                   - cloudformation:DeleteChangeSet
                   - cloudformation:ListStackResources
                 Resource:
-                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/${ResourcePrefix}-*/*'
-                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/ms-${ResourcePrefix}-*/*'
-                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:changeSet/*/*'
+                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/${ResourcePrefix}-*-${Environment}/*'
+                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/ms-${ResourcePrefix}-*-${Environment}/*'
+                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:changeSet/*-${Environment}-*/*'
               - Sid: CloudFormationTemplateValidation
                 Effect: Allow
                 Action:
@@ -77,8 +77,8 @@ Resources:
                 Effect: Allow
                 Action: 'lambda:*'
                 Resource:
-                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:function:${ResourcePrefix}-*'
-                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:function:ms-${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:function:${ResourcePrefix}-*-${Environment}*'
+                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:function:ms-${ResourcePrefix}-*-${Environment}-*'
                   - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:layer:*'
               - Sid: ApiGateway
                 Effect: Allow
@@ -88,14 +88,14 @@ Resources:
                 Effect: Allow
                 Action: 'dynamodb:*'
                 Resource:
-                  - !Sub 'arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/${ResourcePrefix}-*'
-                  - !Sub 'arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/${ResourcePrefix}-*/index/*'
+                  - !Sub 'arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/${ResourcePrefix}-*-${Environment}'
+                  - !Sub 'arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/${ResourcePrefix}-*-${Environment}/index/*'
               - Sid: MediaAndDeploymentBuckets
                 Effect: Allow
                 Action: 's3:*'
                 Resource:
-                  - !Sub 'arn:aws:s3:::${ResourcePrefix}-*'
-                  - !Sub 'arn:aws:s3:::${ResourcePrefix}-*/*'
+                  - !Sub 'arn:aws:s3:::${ResourcePrefix}-*-${Environment}-*'
+                  - !Sub 'arn:aws:s3:::${ResourcePrefix}-*-${Environment}-*/*'
                   - 'arn:aws:s3:::serverless-framework-deployments-us-east-1-*'
                   - 'arn:aws:s3:::serverless-framework-deployments-us-east-1-*/*'
               - Sid: Cognito
@@ -146,7 +146,7 @@ Resources:
                   - secretsmanager:UpdateSecret
                   - secretsmanager:TagResource
                   - secretsmanager:DeleteSecret
-                Resource: !Sub 'arn:aws:secretsmanager:us-east-1:${AWS::AccountId}:secret:${ResourcePrefix}/*'
+                Resource: !Sub 'arn:aws:secretsmanager:us-east-1:${AWS::AccountId}:secret:${ResourcePrefix}/${Environment}/*'
               - Sid: ServerlessState
                 Effect: Allow
                 Action:
@@ -156,14 +156,14 @@ Resources:
                   - ssm:DeleteParameter
                   - ssm:AddTagsToResource
                 Resource:
-                  - !Sub 'arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/${ResourcePrefix}/*'
+                  - !Sub 'arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/${ResourcePrefix}/${Environment}/*'
                   - !Sub 'arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/serverless-framework/*'
               - Sid: Logs
                 Effect: Allow
                 Action: 'logs:*'
                 Resource:
-                  - !Sub 'arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/lambda/${ResourcePrefix}-*'
-                  - !Sub 'arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/lambda/ms-${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/lambda/${ResourcePrefix}-*-${Environment}*'
+                  - !Sub 'arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/lambda/ms-${ResourcePrefix}-*-${Environment}-*'
               - Sid: ManageEpicoLambdaRoles
                 Effect: Allow
                 Action:
@@ -178,11 +178,11 @@ Resources:
                   - iam:DetachRolePolicy
                   - iam:TagRole
                   - iam:UntagRole
-                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*${ResourcePrefix}*'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*${ResourcePrefix}*${Environment}*'
               - Sid: PassEpicoRolesToLambda
                 Effect: Allow
                 Action: iam:PassRole
-                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*${ResourcePrefix}*'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*${ResourcePrefix}*${Environment}*'
                 Condition:
                   StringEquals:
                     iam:PassedToService: lambda.amazonaws.com

@@ -8,7 +8,23 @@ FSG no entrega el código fuente de los microservicios ni de los frontends. El c
 
 Las secciones marcadas **“Corresponde al proveedor de la solución”** son ejecutadas por FSG porque requieren repositorios privados y código fuente. Al terminarlas, el procedimiento vuelve al cliente.
 
-## 2. Responsabilidades
+## 2. Selección obligatoria del ambiente
+
+La cuenta puede alojar dos instalaciones aisladas: `qa` y `production`. El cliente debe ejecutar este manual una vez por ambiente, comenzando por QA.
+
+```powershell
+# QA
+Copy-Item infrastructure/deployment-role-parameters.qa.example.json infrastructure/deployment-role-parameters.qa.json
+Copy-Item infrastructure/parameters.qa.example.json infrastructure/parameters.qa.json
+
+# Producción, únicamente después de aceptar QA
+Copy-Item infrastructure/deployment-role-parameters.production.example.json infrastructure/deployment-role-parameters.production.json
+Copy-Item infrastructure/parameters.production.example.json infrastructure/parameters.production.json
+```
+
+Use `-Environment qa` o `-Environment production` en todos los scripts. Los stacks serán `epico-*-qa` y `epico-*-production`; no se reutilizan archivos de parámetros, roles, usuarios Cognito, outputs ni secretos entre ambientes. Centros de costo propuestos: `FSG-ELRN-EPICO-QA` y `FSG-ELRN-EPICO-PROD`. La matriz completa está en `config/multi-environment.md`.
+
+## 3. Responsabilidades
 
 | Actividad | Cliente | Proveedor FSG |
 | --- | --- | --- |
@@ -302,6 +318,8 @@ Después de aceptación:
 ## 21. Futuras actualizaciones solicitadas al proveedor
 
 Cada actualización se trata como una nueva intervención controlada. El permiso temporal usado en la instalación inicial no debe permanecer abierto indefinidamente.
+
+Toda actualización se prueba primero con el rol `epico-deployment-qa`. Solo después de la aceptación se abre otra autorización temporal para `epico-deployment-production` y se promueve exactamente la versión aprobada. Una autorización para QA no debe interpretarse como autorización para producción.
 
 ### 21.1 Solicitud y aprobación
 

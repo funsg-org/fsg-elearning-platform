@@ -1,13 +1,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$StackName,
+    [ValidateSet('qa','production')][string]$Environment = 'production',
     [string]$OutputFile,
     [string]$AwsProfile,
     [string]$Region = 'us-east-1'
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if (-not $OutputFile) { $OutputFile = Join-Path $repositoryRoot 'config\amplify-outputs.env' }
+if (-not $OutputFile) { $OutputFile = Join-Path $repositoryRoot "config\amplify-outputs.$Environment.env" }
 $arguments = @('cloudformation','describe-stacks','--stack-name',$StackName,'--region',$Region,'--output','json')
 if ($AwsProfile) { $arguments += @('--profile',$AwsProfile) }
 $raw = & aws @arguments

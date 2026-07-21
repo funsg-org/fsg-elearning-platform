@@ -1,13 +1,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$RoleArn,
+    [ValidateSet('qa','production')][string]$Environment = 'production',
     [string]$AwsProfile,
     [string]$Region = 'us-east-1',
     [int]$DurationSeconds = 3600
 )
 $ErrorActionPreference = 'Stop'
-if ($RoleArn -notmatch '^arn:aws:iam::\d{12}:role/epico-deployment-production$') { throw 'RoleArn no corresponde al rol de despliegue EPICO esperado.' }
-$arguments = @('sts','assume-role','--role-arn',$RoleArn,'--role-session-name','epico-deployment','--duration-seconds',$DurationSeconds,'--region',$Region,'--output','json')
+if ($RoleArn -notmatch "^arn:aws:iam::\d{12}:role/epico-deployment-$Environment$") { throw "RoleArn no corresponde al rol EPICO de $Environment." }
+$arguments = @('sts','assume-role','--role-arn',$RoleArn,'--role-session-name',"epico-$Environment-deployment",'--duration-seconds',$DurationSeconds,'--region',$Region,'--output','json')
 if ($AwsProfile) { $arguments += @('--profile',$AwsProfile) }
 $raw = & aws @arguments
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo asumir el rol de despliegue.' }

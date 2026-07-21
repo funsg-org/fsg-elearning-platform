@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('qa','production')][string]$EnvironmentName = 'production',
     [string]$EnvironmentFile,
     [string]$OutputsFile,
     [string]$ServiceOutputsFile,
@@ -9,13 +10,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if ([string]::IsNullOrWhiteSpace($EnvironmentFile)) {
-    $EnvironmentFile = Join-Path $repositoryRoot '.env'
+    $EnvironmentFile = Join-Path $repositoryRoot ".env.$EnvironmentName"
 }
 if ([string]::IsNullOrWhiteSpace($OutputsFile)) {
-    $OutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
+    $OutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$EnvironmentName.env"
 }
 if ([string]::IsNullOrWhiteSpace($ServiceOutputsFile)) {
-    $ServiceOutputsFile = Join-Path $repositoryRoot 'config\service-outputs.env'
+    $ServiceOutputsFile = Join-Path $repositoryRoot "config\service-outputs.$EnvironmentName.env"
 }
 
 function Import-EnvironmentFile {
@@ -70,9 +71,15 @@ function Import-EnvironmentFile {
 $loaded = @{}
 Import-EnvironmentFile -Path (Join-Path $repositoryRoot 'config\naming.env') -LoadedValues $loaded
 Import-EnvironmentFile -Path (Join-Path $repositoryRoot 'config\tags.env') -LoadedValues $loaded
+Import-EnvironmentFile -Path (Join-Path $repositoryRoot "config\environments\$EnvironmentName.env") -LoadedValues $loaded
 Import-EnvironmentFile -Path $OutputsFile -LoadedValues $loaded -Optional
 Import-EnvironmentFile -Path $ServiceOutputsFile -LoadedValues $loaded -Optional
 Import-EnvironmentFile -Path $EnvironmentFile -LoadedValues $loaded -Optional
+Import-EnvironmentFile -Path (Join-Path $repositoryRoot '.env') -LoadedValues $loaded -Optional
+
+if ($env:ENVIRONMENT -ne $EnvironmentName -or $env:RESOURCE_SUFFIX -ne $EnvironmentName) {
+    throw "El perfil solicitado '$EnvironmentName' no coincide con ENVIRONMENT/RESOURCE_SUFFIX."
+}
 
 if (-not $Quiet) {
     Write-Host "Configuración cargada para $($env:CLIENT_CODE)/$($env:ENVIRONMENT) en $($env:AWS_REGION)."

@@ -1,13 +1,15 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
-    [string]$SecretId = 'epico/production/github/amplify-token',
+    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [string]$SecretId,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
     [string]$CostCenter
 )
 $ErrorActionPreference = 'Stop'
+if (-not $SecretId) { $SecretId = "epico/$Environment/github/amplify-token" }
 if ($Region -ne 'us-east-1') { throw 'El secreto de Amplify debe prepararse en us-east-1.' }
 if (-not $Execute) {
     Write-Host "Secreto a crear: $SecretId"
@@ -44,7 +46,7 @@ try {
             @{ Key='Solution'; Value='E-Learning' },
             @{ Key='Project'; Value='FSG-Elearning' },
             @{ Key='Client'; Value='EPICO' },
-            @{ Key='Environment'; Value='production' },
+            @{ Key='Environment'; Value=$Environment },
             @{ Key='Owner'; Value='FSG' },
             @{ Key='ManagedBy'; Value='IaC' },
             @{ Key='CostCenter'; Value=$CostCenter }

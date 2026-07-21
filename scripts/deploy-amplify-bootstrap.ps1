@@ -1,20 +1,21 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('qa','production')][string]$Environment = 'production',
     [switch]$Execute,
     [switch]$ApproveChangeSets,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
-    [string]$StackName = 'epico-amplify-production',
+    [string]$StackName,
     [string]$ParametersFile,
     [string]$OutputFile
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $StackName) { $StackName = "epico-amplify-$Environment" }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\amplify-hosting.yml'
-if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json' }
+if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot "infrastructure\amplify-parameters.$Environment.json" }
 if ($Region -ne 'us-east-1') { throw 'Amplify debe prepararse en us-east-1.' }
-if ((& git -C $repositoryRoot branch --show-current).Trim() -ne 'feature/epico-deployment-readiness') { throw 'Use la rama feature/epico-deployment-readiness.' }
 & (Join-Path $PSScriptRoot 'validate-amplify-infrastructure.ps1') -TemplateFile $templateFile -Region $Region -AwsProfile $AwsProfile
 
 Write-Host "Modo: $(if ($Execute) { 'EJECUCION' } else { 'VISTA PREVIA' })"
@@ -38,6 +39,7 @@ foreach ($parameter in $parameters) {
     $values[$parameter.ParameterKey] = [string]$parameter.ParameterValue
     $overrides.Add("$($parameter.ParameterKey)=$($parameter.ParameterValue)")
 }
+if ($values.ResourceSuffix -ne $Environment -or $values.EnvironmentTag -ne $Environment) { throw "Los parametros Amplify no corresponden a $Environment." }
 foreach ($required in @('CostCenterTag','GitHubAccessTokenSecretId','DeploymentBranch','DeploymentBranchDomainPrefix')) {
     if (-not $values.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($values[$required])) { throw "Falta el parametro '$required'." }
 }
@@ -60,5 +62,6 @@ if ($AwsProfile) { $changeSetArguments.AwsProfile=$AwsProfile }
 $exportArguments = @{ StackName=$StackName; Region=$Region }
 if ($AwsProfile) { $exportArguments.AwsProfile=$AwsProfile }
 if ($OutputFile) { $exportArguments.OutputFile=$OutputFile }
+$exportArguments.Environment = $Environment
 & (Join-Path $PSScriptRoot 'export-amplify-outputs.ps1') @exportArguments
 Write-Host 'Bootstrap completado. Los builds permanecen desactivados.' -ForegroundColor Green

@@ -1,9 +1,10 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('qa','production')][string]$Environment = 'production',
     [switch]$Execute,
     [switch]$EnableAutoBuild,
     [switch]$StartBuild,
-    [string]$StackName = 'epico-amplify-production',
+    [string]$StackName,
     [string]$Region = 'us-east-1',
     [string]$AwsProfile,
     [string]$ClientEnvironmentFile,
@@ -11,8 +12,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if (-not $ClientEnvironmentFile) { $ClientEnvironmentFile = Join-Path $repositoryRoot 'config\amplify-client-env.json' }
-if (-not $AdminEnvironmentFile) { $AdminEnvironmentFile = Join-Path $repositoryRoot 'config\amplify-admin-env.json' }
+if (-not $StackName) { $StackName = "epico-amplify-$Environment" }
+if (-not $ClientEnvironmentFile) { $ClientEnvironmentFile = Join-Path $repositoryRoot "config\amplify-client-$Environment-env.json" }
+if (-not $AdminEnvironmentFile) { $AdminEnvironmentFile = Join-Path $repositoryRoot "config\amplify-admin-$Environment-env.json" }
 foreach ($path in @($ClientEnvironmentFile,$AdminEnvironmentFile)) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Falta el mapa: $path" } }
 if (($EnableAutoBuild -or $StartBuild) -and -not $Execute) { throw '-EnableAutoBuild y -StartBuild requieren -Execute.' }
 $awsBase = @('--region',$Region)

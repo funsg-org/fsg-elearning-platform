@@ -15,11 +15,16 @@ $files = @(
     'infrastructure/shared-resources.yml',
     'infrastructure/deployment-role-parameters.example.json',
     'infrastructure/parameters.example.json',
+    'infrastructure/deployment-role-parameters.qa.example.json',
+    'infrastructure/deployment-role-parameters.production.example.json',
+    'infrastructure/parameters.qa.example.json',
+    'infrastructure/parameters.production.example.json',
     'scripts/deploy-deployment-role.ps1',
     'scripts/validate-deployment-role.ps1',
     'scripts/validate-infrastructure.ps1',
     'scripts/invoke-cloudformation-change-set.ps1',
     'config/client-installation-manual.md',
+    'config/multi-environment.md',
     'config/client-deployment-handover.md'
 )
 

@@ -4,11 +4,19 @@
 !.env.example
 config/platform-outputs.env
 config/service-outputs.env
+config/platform-outputs.*.env
+config/service-outputs.*.env
 config/amplify-*-env.json
 config/amplify-outputs.env
 infrastructure/parameters.json
 infrastructure/amplify-parameters.json
 infrastructure/deployment-role-parameters.json
+infrastructure/parameters.qa.json
+infrastructure/parameters.production.json
+infrastructure/amplify-parameters.qa.json
+infrastructure/amplify-parameters.production.json
+infrastructure/deployment-role-parameters.qa.json
+infrastructure/deployment-role-parameters.production.json
 
 # IDE y sistema operativo
 .idea/
@@ -23,7 +31,7 @@ build/
 .serverless/
 *.log
 artifacts/recovery/
-artifacts/client-deployment-kit/
+artifacts/
 
 # Documentos de trabajo locales
 aprendamosgye-deployment-plan/

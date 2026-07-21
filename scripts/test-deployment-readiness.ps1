@@ -3,6 +3,8 @@ param(
     [Parameter(Mandatory = $true)][string]$ExpectedAccountId,
     [Parameter(Mandatory = $true)][string]$ExpectedDeploymentRoleArn,
     [string]$AwsProfile,
+    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [string]$SourceBranch,
     [string]$Region = 'us-east-1',
     [string]$ParametersFile,
     [string]$AmplifyParametersFile,
@@ -10,9 +12,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json' }
-if (-not $AmplifyParametersFile) { $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json' }
-$expectedBranch = 'feature/epico-deployment-readiness'
+if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'qa' } else { 'main' } }
+if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot "infrastructure\parameters.$Environment.json" }
+if (-not $AmplifyParametersFile) { $AmplifyParametersFile = Join-Path $repositoryRoot "infrastructure\amplify-parameters.$Environment.json" }
+$expectedBranch = $SourceBranch
 $repositories = @(
     '.',
     'frontends\aprendamosgye_react',
@@ -27,7 +30,7 @@ $repositories = @(
 )
 $services = $repositories | Where-Object { $_ -like 'services\*' }
 $checks = [System.Collections.Generic.List[string]]::new()
-. (Join-Path $PSScriptRoot 'load-environment.ps1') -Quiet | Out-Null
+. (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -Quiet | Out-Null
 function Add-Check([string]$Message) { $checks.Add($Message) }
 function Assert-Command([string]$Name) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) { throw "No se encontro la herramienta '$Name' en PATH." }
@@ -107,12 +110,15 @@ foreach ($key in @('ResourcePrefix','ResourceSuffix','SolutionTag','ProjectTag',
     if ($platform[$key] -ne $amplify[$key]) { throw "'$key' no coincide entre infraestructura y Amplify." }
 }
 if ($platform.CostCenterTag -eq 'PENDING') { throw 'CostCenterTag continua en PENDING.' }
-if ($platform.ResourcePrefix -ne 'epico' -or $platform.ResourceSuffix -ne 'production') { throw 'El destino esperado debe usar epico/production.' }
+if ($platform.ResourcePrefix -ne 'epico' -or $platform.ResourceSuffix -ne $Environment) { throw "El destino esperado debe usar epico/$Environment." }
+if ($platform.Environment -ne $Environment) { throw "El archivo de plataforma no corresponde a $Environment." }
 if ($platform.Environment -ne $amplify.EnvironmentTag) { throw 'Environment y EnvironmentTag no coinciden entre ambos stacks.' }
 if ($amplify.DeploymentBranch -ne $expectedBranch) { throw 'DeploymentBranch no coincide con la rama de preparacion.' }
 $expectedDomainPrefix = $expectedBranch -replace '[^a-z0-9-]','-'
 if ($amplify.DeploymentBranchDomainPrefix -ne $expectedDomainPrefix) { throw "DeploymentBranchDomainPrefix debe ser '$expectedDomainPrefix'." }
 if (-not $amplify.GitHubAccessTokenSecretId) { throw 'Falta GitHubAccessTokenSecretId.' }
+if ($amplify.GitHubAccessTokenSecretId -notmatch "^epico/$Environment/") { throw 'El secreto GitHub pertenece a otro ambiente.' }
+if ($env:SERVERLESS_ACCESS_KEY_SECRET_ID -notmatch "^epico/$Environment/") { throw 'El secreto Serverless pertenece a otro ambiente.' }
 Add-Check 'Parametros, tags, prefijo, sufijo y rama consistentes'
 
 $awsBase = @('--region',$Region)

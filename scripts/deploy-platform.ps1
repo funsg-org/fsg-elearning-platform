@@ -1,5 +1,7 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [string]$SourceBranch,
     [switch]$Execute,
     [switch]$ApproveChangeSets,
     [switch]$AllowDirty,
@@ -7,8 +9,8 @@ param(
     [string]$ExpectedAccountId,
     [string]$DeploymentRoleArn,
     [string]$Region = 'us-east-1',
-    [string]$StackName = 'epico-platform-production',
-    [string]$AmplifyStackName = 'epico-amplify-production',
+    [string]$StackName,
+    [string]$AmplifyStackName,
     [string]$ParametersFile,
     [string]$AmplifyParametersFile,
     [string]$AmplifyOutputsFile
@@ -16,18 +18,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'qa' } else { 'main' } }
+if (-not $StackName) { $StackName = "epico-platform-$Environment" }
+if (-not $AmplifyStackName) { $AmplifyStackName = "epico-amplify-$Environment" }
 if ([string]::IsNullOrWhiteSpace($ParametersFile)) {
-    $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json'
+    $ParametersFile = Join-Path $repositoryRoot "infrastructure\parameters.$Environment.json"
 }
 if ([string]::IsNullOrWhiteSpace($AmplifyOutputsFile)) {
-    $AmplifyOutputsFile = Join-Path $repositoryRoot 'config\amplify-outputs.env'
+    $AmplifyOutputsFile = Join-Path $repositoryRoot "config\amplify-outputs.$Environment.env"
 }
 if ([string]::IsNullOrWhiteSpace($AmplifyParametersFile)) {
-    $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json'
+    $AmplifyParametersFile = Join-Path $repositoryRoot "infrastructure\amplify-parameters.$Environment.json"
 }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\shared-resources.yml'
-$platformOutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
-$serviceOutputsFile = Join-Path $repositoryRoot 'config\service-outputs.env'
+$platformOutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$Environment.env"
+$serviceOutputsFile = Join-Path $repositoryRoot "config\service-outputs.$Environment.env"
 
 $services = @(
     'services\ms-aprendamosgye-auth',
@@ -87,7 +92,7 @@ if (-not (Test-Path -LiteralPath $templateFile -PathType Leaf)) {
     throw "No se encontró la plantilla compartida: $templateFile"
 }
 
-$expectedBranch = 'feature/epico-deployment-readiness'
+$expectedBranch = $SourceBranch
 $currentBranch = (& git -C $repositoryRoot branch --show-current).Trim()
 if ($currentBranch -ne $expectedBranch) {
     throw "El despliegue debe prepararse desde '$expectedBranch'; rama actual: '$currentBranch'."
@@ -153,11 +158,13 @@ if ($ExpectedAccountId -notmatch '^\d{12}$') {
     throw 'Debe indicar -ExpectedAccountId con los 12 dígitos de la cuenta destino.'
 }
 if (-not $DeploymentRoleArn) { throw 'Debe indicar -DeploymentRoleArn para evitar despliegues con el principal bootstrap.' }
-& (Join-Path $PSScriptRoot 'enter-deployment-role.ps1') -RoleArn $DeploymentRoleArn -AwsProfile $AwsProfile -Region $Region
+& (Join-Path $PSScriptRoot 'enter-deployment-role.ps1') -RoleArn $DeploymentRoleArn -Environment $Environment -AwsProfile $AwsProfile -Region $Region
 $AwsProfile = $null
 $preflightArguments = @{
     ExpectedAccountId=$ExpectedAccountId
     ExpectedDeploymentRoleArn=$DeploymentRoleArn
+    Environment=$Environment
+    SourceBranch=$SourceBranch
     Region=$Region
     ParametersFile=$ParametersFile
     AmplifyParametersFile=$AmplifyParametersFile
@@ -172,6 +179,7 @@ foreach ($service in $services) {
 }
 
 $amplifyBootstrapArguments = @{
+    Environment = $Environment
     Execute = $true
     ApproveChangeSets = $true
     StackName = $AmplifyStackName
@@ -210,13 +218,13 @@ Write-Host "Cuenta AWS verificada: $($identity.Account) ($($identity.Arn))" -For
 $sharedChangeSetArguments = @{ StackName=$StackName; TemplateFile=$templateFile; ParameterOverrides=$parameterOverrides; Capabilities=@('CAPABILITY_NAMED_IAM'); ApproveExecution=$true; Region=$Region }
 & (Join-Path $PSScriptRoot 'invoke-cloudformation-change-set.ps1') @sharedChangeSetArguments
 
-$exportPlatformArguments = @{ StackName = $StackName; Region = $Region; OutputFile = $platformOutputsFile }
+$exportPlatformArguments = @{ StackName = $StackName; Environment = $Environment; Region = $Region; OutputFile = $platformOutputsFile }
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $exportPlatformArguments.AwsProfile = $AwsProfile }
 & (Join-Path $PSScriptRoot 'export-cloudformation-outputs.ps1') @exportPlatformArguments
-& (Join-Path $PSScriptRoot 'validate-environment.ps1') -OutputsFile $platformOutputsFile -RequirePlatformOutputs
+& (Join-Path $PSScriptRoot 'validate-environment.ps1') -EnvironmentName $Environment -OutputsFile $platformOutputsFile -RequirePlatformOutputs
 
-. (Join-Path $PSScriptRoot 'load-environment.ps1') -OutputsFile $platformOutputsFile -Quiet | Out-Null
-$recoveryRunDirectory=Join-Path $repositoryRoot ("artifacts\recovery\"+(Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss'))
+. (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -OutputsFile $platformOutputsFile -Quiet | Out-Null
+$recoveryRunDirectory=Join-Path $repositoryRoot ("artifacts\recovery\$Environment\"+(Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss'))
 foreach ($service in $services) {
     $servicePath = Join-Path $repositoryRoot $service
     $component=(Split-Path $servicePath -Leaf) -replace '^ms-aprendamosgye-',''
@@ -236,10 +244,10 @@ foreach ($service in $services) {
 $exportServicesArguments = @{ Region = $Region; ResourcePrefix = $env:RESOURCE_PREFIX; Environment = $env:ENVIRONMENT; OutputFile = $serviceOutputsFile }
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $exportServicesArguments.AwsProfile = $AwsProfile }
 & (Join-Path $PSScriptRoot 'export-serverless-outputs.ps1') @exportServicesArguments
-& (Join-Path $PSScriptRoot 'validate-environment.ps1') -OutputsFile $platformOutputsFile -ServiceOutputsFile $serviceOutputsFile -RequirePlatformOutputs -RequireServiceOutputs
-& (Join-Path $PSScriptRoot 'export-amplify-environments.ps1') -PlatformOutputsFile $platformOutputsFile -ServiceOutputsFile $serviceOutputsFile
+& (Join-Path $PSScriptRoot 'validate-environment.ps1') -EnvironmentName $Environment -OutputsFile $platformOutputsFile -ServiceOutputsFile $serviceOutputsFile -RequirePlatformOutputs -RequireServiceOutputs
+& (Join-Path $PSScriptRoot 'export-amplify-environments.ps1') -Environment $Environment -PlatformOutputsFile $platformOutputsFile -ServiceOutputsFile $serviceOutputsFile -ClientOutputFile (Join-Path $repositoryRoot "config\amplify-client-$Environment-env.json") -AdminOutputFile (Join-Path $repositoryRoot "config\amplify-admin-$Environment-env.json")
 
-$configureAmplifyArguments = @{ Execute=$true; StackName=$AmplifyStackName; Region=$Region }
+$configureAmplifyArguments = @{ Environment=$Environment; Execute=$true; StackName=$AmplifyStackName; Region=$Region; ClientEnvironmentFile=(Join-Path $repositoryRoot "config\amplify-client-$Environment-env.json"); AdminEnvironmentFile=(Join-Path $repositoryRoot "config\amplify-admin-$Environment-env.json") }
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $configureAmplifyArguments.AwsProfile=$AwsProfile }
 & (Join-Path $PSScriptRoot 'configure-amplify-branches.ps1') @configureAmplifyArguments
 

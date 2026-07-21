@@ -21,7 +21,7 @@ $ErrorActionPreference = $previousPreference
 if ($stackLookupExit -eq 0) { $changeSetType='UPDATE' }
 elseif (($stackLookup -join [Environment]::NewLine) -match 'ValidationError|does not exist') { $changeSetType='CREATE' }
 else { throw "No se pudo determinar el estado del stack '$StackName'." }
-$changeSetName = 'review-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8)
+$changeSetName = 'review-' + $StackName + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8)
 $arguments = @('cloudformation','create-change-set','--stack-name',$StackName,'--change-set-name',$changeSetName,'--change-set-type',$changeSetType,'--template-body',"file://$TemplateFile")
 if ($ParameterOverrides.Count) {
     $arguments += '--parameters'

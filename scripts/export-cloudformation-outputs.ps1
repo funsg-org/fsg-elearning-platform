@@ -7,6 +7,7 @@ param(
     [string]$InputJsonFile,
 
     [string]$OutputFile,
+    [ValidateSet('qa','production')][string]$Environment = 'production',
     [string]$AwsProfile,
     [string]$Region = 'us-east-1'
 )
@@ -14,7 +15,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if ([string]::IsNullOrWhiteSpace($OutputFile)) {
-    $OutputFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
+    $OutputFile = Join-Path $repositoryRoot "config\platform-outputs.$Environment.env"
 }
 $OutputFile = [System.IO.Path]::GetFullPath($OutputFile)
 

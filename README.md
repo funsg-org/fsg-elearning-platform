@@ -1,5 +1,9 @@
 # FSG E-learning Platform
 
+## Ambientes en una cuenta AWS
+
+La plataforma separa `qa` y `production` mediante perfiles versionados, stacks, sufijos, secretos, tags y contratos de salida independientes. Consulte [config/multi-environment.md](config/multi-environment.md) antes de preparar parámetros o desplegar. El ambiente se indica explícitamente con `-Environment qa` o `-Environment production`; QA se valida antes de promover la misma versión a producción.
+
 Repositorio orquestador privado de FSG para administrar, versionar y validar la solución e-learning como una unidad.
 
 Este repositorio no reemplaza los repositorios de los microservicios y frontends. Cada proyecto mantiene su historial y repositorio independiente; el padre registra, mediante Git submodules, el commit exacto de cada componente que integra una versión de la plataforma.

@@ -1,13 +1,15 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
-    [string]$SecretId = 'epico/production/serverless/access-key',
+    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [string]$SecretId,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
     [string]$CostCenter
 )
 $ErrorActionPreference = 'Stop'
+if (-not $SecretId) { $SecretId = "epico/$Environment/serverless/access-key" }
 if ($Region -ne 'us-east-1') { throw 'El secreto Serverless debe crearse en us-east-1.' }
 if (-not $Execute) { Write-Host "Secreto a crear: $SecretId"; Write-Warning 'Vista previa: no se solicito la clave ni se modifico Secrets Manager.'; exit 0 }
 if ($ExpectedAccountId -notmatch '^\d{12}$') { throw 'Indique -ExpectedAccountId con 12 digitos.' }
@@ -35,7 +37,7 @@ try {
         secretString=(@{ accessKey=$plainKey } | ConvertTo-Json -Compress)
         tags=@(
             @{ Key='Solution'; Value='E-Learning' }, @{ Key='Project'; Value='FSG-Elearning' },
-            @{ Key='Client'; Value='EPICO' }, @{ Key='Environment'; Value='production' },
+            @{ Key='Client'; Value='EPICO' }, @{ Key='Environment'; Value=$Environment },
             @{ Key='Owner'; Value='FSG' }, @{ Key='ManagedBy'; Value='IaC' }, @{ Key='CostCenter'; Value=$CostCenter }
         )
     }

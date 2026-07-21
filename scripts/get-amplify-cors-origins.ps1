@@ -1,8 +1,11 @@
 [CmdletBinding()]
-param([string]$AmplifyOutputsFile)
+param(
+    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [string]$AmplifyOutputsFile
+)
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if (-not $AmplifyOutputsFile) { $AmplifyOutputsFile = Join-Path $repositoryRoot 'config\amplify-outputs.env' }
+if (-not $AmplifyOutputsFile) { $AmplifyOutputsFile = Join-Path $repositoryRoot "config\amplify-outputs.$Environment.env" }
 if (-not (Test-Path -LiteralPath $AmplifyOutputsFile -PathType Leaf)) { throw "Falta el contrato de Amplify: $AmplifyOutputsFile" }
 $values = @{}
 $lineNumber = 0

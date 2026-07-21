@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('qa','production')][string]$EnvironmentName = 'production',
     [string]$EnvironmentFile,
     [string]$OutputsFile,
     [string]$ServiceOutputsFile,
@@ -10,16 +11,16 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if ([string]::IsNullOrWhiteSpace($EnvironmentFile)) {
-    $EnvironmentFile = Join-Path $repositoryRoot '.env'
+    $EnvironmentFile = Join-Path $repositoryRoot ".env.$EnvironmentName"
 }
 if ([string]::IsNullOrWhiteSpace($OutputsFile)) {
-    $OutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
+    $OutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$EnvironmentName.env"
 }
 if ([string]::IsNullOrWhiteSpace($ServiceOutputsFile)) {
-    $ServiceOutputsFile = Join-Path $repositoryRoot 'config\service-outputs.env'
+    $ServiceOutputsFile = Join-Path $repositoryRoot "config\service-outputs.$EnvironmentName.env"
 }
 
-$loadedValues = . (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentFile $EnvironmentFile -OutputsFile $OutputsFile -ServiceOutputsFile $ServiceOutputsFile -Quiet
+$loadedValues = . (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $EnvironmentName -EnvironmentFile $EnvironmentFile -OutputsFile $OutputsFile -ServiceOutputsFile $ServiceOutputsFile -Quiet
 
 $requiredVariables = @(
     'SOLUTION_NAME',
@@ -110,6 +111,13 @@ foreach ($variable in @('PROJECT_CODE', 'CLIENT_CODE', 'RESOURCE_PREFIX', 'RESOU
 
 if ($env:AWS_REGION -ne 'us-east-1') {
     $errors.Add("AWS_REGION debe ser us-east-1 para esta solución; valor recibido: '$($env:AWS_REGION)'.")
+}
+
+foreach ($variable in @('RESOURCE_SUFFIX', 'ENVIRONMENT', 'TAG_ENVIRONMENT')) {
+    $value = [Environment]::GetEnvironmentVariable($variable, 'Process')
+    if ($value -ne $EnvironmentName) {
+        $errors.Add("$variable debe coincidir con el ambiente solicitado '$EnvironmentName'.")
+    }
 }
 
 if ($env:AWS_ACCOUNT_ID -and $env:AWS_ACCOUNT_ID -notmatch '^\d{12}$') {

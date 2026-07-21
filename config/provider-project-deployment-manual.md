@@ -4,7 +4,17 @@
 
 Este runbook es exclusivo de FSG. Comienza cuando el cliente ya creó el rol y la infraestructura compartida, y entregó acceso temporal y outputs no sensibles. No crea la cuenta AWS ni solicita credenciales root.
 
-## 2. Información que debe recibir FSG
+## 2. Seleccionar el ambiente antes de operar
+
+Definir una sola variable de trabajo para cada intervención:
+
+```powershell
+$deploymentEnvironment = 'qa' # cambiar a production solo tras aprobación de QA
+```
+
+Todos los comandos deben recibir `-Environment $deploymentEnvironment`. Los archivos reales son `parameters.<ambiente>.json`, `amplify-parameters.<ambiente>.json` y `platform-outputs.<ambiente>.env`. Nunca mantener en el proceso variables cargadas de otro ambiente; abrir una terminal nueva al cambiar de QA a producción.
+
+## 3. Información que debe recibir FSG
 
 - Account ID de 12 dígitos y región `us-east-1`.
 - ARN de `epico-deployment-production`.
@@ -182,6 +192,8 @@ Probar salud de APIs, consola administrativa, portal público, rechazo de usuari
 - Conservar únicamente documentación operativa autorizada.
 
 ## 16. Procedimiento interno para futuras actualizaciones
+
+La promoción obligatoria es QA → aceptación del cliente → producción. Deben ser dos ventanas y dos permisos temporales diferenciados. Registrar el commit aprobado en QA y verificar que sea el mismo que se despliega en producción; no reconstruir desde una rama con cambios adicionales.
 
 ### 16.1 Registrar y acotar la solicitud
 
