@@ -13,7 +13,7 @@ Los dos frontends utilizan los mismos nombres para APIs y CDN. El portal adminis
 - `VITE_VIDEOS_API_URL`
 - `VITE_MEDIA_CDN_URL`
 
-El portal público agrega `VITE_BASE_PATH=/`. El administrativo agrega `VITE_COGNITO_USER_POOL_ID` y `VITE_COGNITO_CLIENT_ID`, siempre correspondientes al App Client público sin secreto.
+El portal público agrega `VITE_BASE_PATH=/`. El administrativo agrega `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP`. El acceso exige pertenecer al grupo administrativo generado por la infraestructura.
 
 ## Flujo de generación
 

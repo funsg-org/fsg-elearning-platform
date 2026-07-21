@@ -19,6 +19,7 @@ $requiredOutputs = @(
     'AwsAccountId',
     'CognitoUserPoolId',
     'CognitoClientId',
+    'CognitoAdministratorsGroupName',
     'CognitoAuthClientId',
     'CognitoClientSecretId',
     'MediaBucketName',

@@ -43,6 +43,7 @@ $admin = [ordered]@{}
 foreach ($entry in $common.GetEnumerator()) { $admin[$entry.Key] = $entry.Value }
 $admin['VITE_COGNITO_USER_POOL_ID'] = $env:COGNITO_USER_POOL_ID
 $admin['VITE_COGNITO_CLIENT_ID'] = $env:COGNITO_CLIENT_ID
+$admin['VITE_COGNITO_ADMINISTRATORS_GROUP'] = $env:COGNITO_ADMINISTRATORS_GROUP
 
 [System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($ClientOutputFile), ($client | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($AdminOutputFile), ($admin | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))

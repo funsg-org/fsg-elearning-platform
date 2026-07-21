@@ -101,6 +101,14 @@ Resources:
         IdToken: hours
         RefreshToken: days
 
+  AdministratorsGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: !Sub '${ResourcePrefix}-administrators-${ResourceSuffix}'
+      Description: Administradores autorizados para la consola de gestion.
+      Precedence: 1
+      UserPoolId: !Ref UserPool
+
   AuthUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -401,6 +409,9 @@ Outputs:
   CognitoClientId:
     Description: Public Cognito App Client ID for frontends and API token validation.
     Value: !Ref PublicUserPoolClient
+  CognitoAdministratorsGroupName:
+    Description: Cognito group authorized to use the administration console.
+    Value: !Ref AdministratorsGroup
   CognitoAuthClientId:
     Description: Confidential Cognito App Client ID used only by Auth.
     Value: !Ref AuthUserPoolClient

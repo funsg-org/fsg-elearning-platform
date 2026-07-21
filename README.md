@@ -277,6 +277,8 @@ Para validar y visualizar el orden completo sin desplegar:
 
 El modo de ejecución requiere `-Execute`, parámetros locales completos y confirmación previa de costos/CORS. Sus reglas se documentan en `config/deployment-order.md`.
 
+El procedimiento operativo completo, desde la preparación de la estación hasta el primer administrador y el cierre, está en `config/implementation-manual.md`.
+
 `TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.
 
 Los tags comunes definidos son:

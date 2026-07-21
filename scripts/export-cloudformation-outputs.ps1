@@ -56,6 +56,7 @@ $contract = [ordered]@{
     AWS_ACCOUNT_ID                         = 'AwsAccountId'
     COGNITO_USER_POOL_ID                   = 'CognitoUserPoolId'
     COGNITO_CLIENT_ID                      = 'CognitoClientId'
+    COGNITO_ADMINISTRATORS_GROUP           = 'CognitoAdministratorsGroupName'
     COGNITO_AUTH_CLIENT_ID                 = 'CognitoAuthClientId'
     COGNITO_CLIENT_SECRET_ID               = 'CognitoClientSecretId'
     MEDIA_BUCKET_NAME                      = 'MediaBucketName'

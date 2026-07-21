@@ -18,6 +18,7 @@ $requiredFiles = @(
     'scripts/capture-service-recovery-manifest.ps1',
     'scripts/write-service-recovery-instructions.ps1',
     'scripts/test-deployment-readiness.ps1'
+    'scripts/create-initial-cognito-administrator.ps1'
 )
 foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath) -PathType Leaf)) { throw "Falta el archivo obligatorio '$relativePath'." }

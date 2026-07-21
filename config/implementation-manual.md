@@ -1,0 +1,281 @@
+# Manual de implementación limpia de FSG E-learning para EPICO
+
+Este procedimiento instala la solución en una cuenta AWS ya creada. Está diseñado para ser ejecutado por FSG. El cliente no necesita acceso al código ni instalar herramientas si FSG despliega desde una estación o runner administrado por FSG.
+
+## 1. Datos y responsables
+
+Registrar antes de comenzar:
+
+- Responsable técnico FSG y responsable autorizador del cliente.
+- ID de 12 dígitos de la cuenta AWS destino.
+- Correo del primer administrador de EPICO.
+- Ventana de despliegue y canal de soporte.
+- Centro de costo propuesto: `FSG-ELRN-EPICO-PROD`.
+
+El centro de costo representa empresa, producto, cliente y ambiente. Debe repetirse en todos los archivos de parámetros. Si Finanzas exige otro catálogo, se reemplaza antes del despliegue; nunca se acepta `PENDING`.
+
+## 2. Elegir la estación de despliegue
+
+Puede ser una estación FSG, un runner CI/CD FSG o, si el cliente lo exige, un equipo dentro de su red. AWS CLI solo se necesita allí; no se instala en equipos de usuarios finales ni administradores funcionales.
+
+## 3. Instalar y comprobar herramientas
+
+```powershell
+git --version
+node --version
+npm --version
+aws --version
+$PSVersionTable.PSVersion
+```
+
+Requisitos:
+
+- Git con lectura de los repositorios privados `funsg-org`.
+- Node.js 20.19 o superior.
+- AWS CLI v2.
+- PowerShell 7 recomendado.
+- Acceso HTTPS a GitHub, AWS y Serverless Framework.
+
+No instalar Serverless globalmente: cada microservicio fija `serverless@4.39.0` y usa `npx`.
+
+## 4. Autenticarse en AWS
+
+El mecanismo de autenticación es la forma en que AWS CLI obtiene una sesión inicial. El orden recomendado es AWS IAM Identity Center/SSO, rol corporativo federado y, solo como último recurso, perfil con Access Keys.
+
+### SSO recomendado
+
+```powershell
+aws configure sso --profile epico-bootstrap
+aws sso login --profile epico-bootstrap
+aws sts get-caller-identity --profile epico-bootstrap
+```
+
+### Perfil con Access Keys
+
+```powershell
+aws configure --profile epico-bootstrap
+aws sts get-caller-identity --profile epico-bootstrap
+```
+
+Nunca guardar claves en Git, `.env`, documentos o chats. El Account ID devuelto debe ser exactamente el de la instalación.
+
+## 5. Principal autorizado y roles
+
+El principal autorizado es el ARN de la identidad inicial que podrá ejecutar `sts:AssumeRole` sobre el rol de despliegue. Puede ser un usuario IAM o, preferiblemente, un rol SSO:
+
+```text
+arn:aws:iam::123456789012:role/AWSReservedSSO_PlatformDeployers_xxxxx
+arn:aws:iam::123456789012:user/bootstrap-admin
+```
+
+Hay dos niveles:
+
+- Identidad bootstrap: administrada por el cliente; crea una sola vez el rol limitado.
+- `epico-deployment-production`: rol con permisos para desplegar recursos EPICO en `us-east-1`.
+
+No desplegar permanentemente como root ni con `AdministratorAccess`.
+
+## 6. Clonar la versión aprobada
+
+```powershell
+git clone --recurse-submodules https://github.com/funsg-org/fsg-elearning-platform.git
+Set-Location fsg-elearning-platform
+git switch feature/epico-deployment-readiness
+git submodule sync --recursive
+git submodule update --init --recursive
+git status
+git submodule status
+```
+
+Todos los repositorios deben quedar en los commits registrados y sin cambios locales.
+
+## 7. Crear archivos locales de parámetros
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item infrastructure/parameters.example.json infrastructure/parameters.json
+Copy-Item infrastructure/amplify-parameters.example.json infrastructure/amplify-parameters.json
+Copy-Item infrastructure/deployment-role-parameters.example.json infrastructure/deployment-role-parameters.json
+```
+
+- `.env`: sobrescrituras no sensibles.
+- `parameters.json`: Cognito, S3, CloudFront y Secrets Manager.
+- `amplify-parameters.json`: repositorios, rama y Amplify.
+- `deployment-role-parameters.json`: principal de confianza y tags del rol.
+
+Estos archivos están ignorados por Git y no deben contener contraseñas ni claves. Reemplazar `PENDING` por `FSG-ELRN-EPICO-PROD` en todos. Reemplazar también el ARN de ejemplo por el principal real.
+
+## 8. Crear el rol limitado
+
+Vista previa:
+
+```powershell
+.\scripts\deploy-deployment-role.ps1 -AwsProfile epico-bootstrap -ExpectedAccountId 123456789012
+```
+
+Ejecución, después de revisar:
+
+```powershell
+.\scripts\deploy-deployment-role.ps1 -Execute -AwsProfile epico-bootstrap -ExpectedAccountId 123456789012
+```
+
+Resultado esperado:
+
+```text
+arn:aws:iam::123456789012:role/epico-deployment-production
+```
+
+## 9. Asumir el rol
+
+```powershell
+.\scripts\enter-deployment-role.ps1 `
+  -RoleArn arn:aws:iam::123456789012:role/epico-deployment-production `
+  -AwsProfile epico-bootstrap
+aws sts get-caller-identity
+```
+
+Debe aparecer una sesión `assumed-role/epico-deployment-production` en la cuenta correcta.
+
+## 10. Crear el secreto operativo de Serverless
+
+La Access Key de Serverless autentica Serverless Framework v4; no es una credencial AWS.
+
+1. FSG crea o utiliza su organización en [Serverless Dashboard](https://app.serverless.com).
+2. Inicia sesión con una cuenta corporativa FSG.
+3. Abre `Settings` → `Access Keys`.
+4. Crea una clave dedicada, por ejemplo `epico-production-deployer`.
+5. Copia el valor una sola vez y revisa las condiciones comerciales aplicables a FSG.
+
+La documentación oficial indica que v4 exige autenticación y que las Access Keys son apropiadas para ejecución no interactiva. También existen License Keys para organizaciones con suscripción.
+
+```powershell
+.\scripts\initialize-serverless-access-key-secret.ps1 `
+  -Execute -ExpectedAccountId 123456789012 `
+  -CostCenter FSG-ELRN-EPICO-PROD
+```
+
+El script solicita la Access Key mediante una entrada segura, sin recibirla como argumento.
+
+Se guarda en `epico/production/serverless/access-key`; nunca en `.env` o Git.
+
+## 11. Autorizar GitHub para Amplify
+
+1. Usar una cuenta GitHub con lectura de los dos frontends privados.
+2. Instalar/autorizar AWS Amplify GitHub App para `funsg-org`.
+3. Limitarla a los repositorios necesarios cuando sea posible.
+4. Crear `epico/production/github/amplify-token` mediante el script de inicialización:
+
+```powershell
+.\scripts\initialize-amplify-github-secret.ps1 `
+  -Execute -ExpectedAccountId 123456789012 `
+  -CostCenter FSG-ELRN-EPICO-PROD
+```
+
+El token se solicita mediante entrada segura.
+5. Confirmar que la rama sea `feature/epico-deployment-readiness`, no `main`.
+
+Amplify se crea con auto-build desactivado; autorizarlo todavía no publica las páginas.
+
+## 12. Aprobar políticas Cognito
+
+Configuración inicial:
+
+- Inicio de sesión y verificación por correo.
+- Recuperación por correo verificado.
+- Contraseña Cognito mínima de 8 caracteres, con mayúscula, minúscula, número y símbolo.
+- El administrador inicial requiere al menos 12 caracteres.
+- Access e ID token: 1 hora; refresh token: 30 días.
+- Contraseña temporal: 7 días.
+- MFA desactivado inicialmente.
+- User Pool protegido con `Retain`.
+- Grupo: `epico-administrators-production`.
+
+El responsable de seguridad debe aceptar MFA desactivado o solicitar una fase posterior para habilitarlo y probar recuperación.
+
+## 13. Ejecutar preflight sin desplegar
+
+```powershell
+.\scripts\test-deployment-readiness.ps1 `
+  -ExpectedAccountId 123456789012 `
+  -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+```
+
+Corregir todos los errores. No continuar con cuenta, secreto, parámetros, rama, CORS o CostCenter inválidos.
+
+## 14. Ver el orden sin crear recursos
+
+```powershell
+.\scripts\deploy-platform.ps1
+```
+
+## 15. Desplegar
+
+```powershell
+.\scripts\deploy-platform.ps1 `
+  -Execute -ApproveChangeSets `
+  -ExpectedAccountId 123456789012 `
+  -DeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+```
+
+El proceso valida, instala dependencias, crea Amplify sin builds, obtiene sus URLs, crea infraestructura compartida, exporta outputs, despliega secuencialmente siete servicios, captura recuperación, exporta APIs y configura variables `VITE_*`. Se detiene ante el primer error.
+
+## 16. Crear el primer administrador
+
+Después del stack compartido:
+
+```powershell
+$initialPassword = Read-Host 'Clave inicial del administrador' -AsSecureString
+.\scripts\create-initial-cognito-administrator.ps1 `
+  -Email administrador@epico.example -Password $initialPassword `
+  -ExpectedAccountId 123456789012
+```
+
+Eso es vista previa. Para confirmar:
+
+```powershell
+.\scripts\create-initial-cognito-administrator.ps1 `
+  -Execute -Email administrador@epico.example `
+  -Name 'Administrador EPICO' -Password $initialPassword `
+  -ExpectedAccountId 123456789012
+```
+
+El script verifica la cuenta, crea o actualiza el usuario, verifica su correo, establece la clave y lo incorpora al grupo administrativo. La consola rechaza usuarios fuera del grupo. Entregar usuario y contraseña por canales separados y solicitar cambio inmediato mediante recuperación de contraseña.
+
+## 17. Activar y probar frontends
+
+1. Revisar variables Amplify y confirmar que no contienen secretos.
+2. Iniciar primero el build administrativo.
+3. Probar acceso del administrador y rechazo de un usuario común.
+4. Probar usuarios, cursos, menús, videos, métricas y suscripciones.
+5. Iniciar el frontend público.
+6. Probar carga S3 y entrega CloudFront.
+7. No integrar a `main` hasta aprobar estas pruebas.
+
+## 18. Dominio personalizado opcional
+
+La primera instalación funciona con dominios Amplify y CloudFront. Para agregar uno:
+
+1. Usar preferentemente un dominio ya propiedad del cliente.
+2. Si no existe, registrarlo con Route 53 Domains u otro registrador, siempre a nombre del cliente.
+3. Administrar DNS en Route 53 o en el proveedor actual.
+4. Para CloudFront, solicitar un certificado ACM en `us-east-1` y validarlo por DNS.
+5. En Amplify, usar `Domain management` y crear los registros solicitados.
+6. Separar `app`, `admin` y `media` en subdominios.
+7. Actualizar CORS con orígenes HTTPS exactos; nunca `*`.
+8. Probar HTTPS antes de retirar URLs anteriores.
+
+La plantilla actual no automatiza dominio porque aún no existe. Se incorporará mediante un cambio IaC revisado, no durante el primer despliegue.
+
+## 19. Validación y entrega
+
+Registrar Account ID, región, stacks, URLs, pruebas, correo del administrador, CostCenter, commits y ubicación protegida de recuperación. Nunca registrar contraseñas. Activar las etiquetas de asignación de costos definidas por usuario en Billing si la cuenta todavía no lo hizo y verificar Cost Explorer cuando AWS procese los datos.
+
+## 20. Cierre de seguridad
+
+- Cerrar sesiones bootstrap y despliegue.
+- Limpiar variables temporales de la terminal.
+- Confirmar que `.env`, parámetros y outputs estén ignorados.
+- Rotar cualquier credencial expuesta durante pruebas.
+- Conservar manifiestos de recuperación en almacenamiento FSG restringido.
+
+La implementación concluye solamente cuando infraestructura, siete APIs, dos frontends, administrador, pruebas, tags y recuperación estén verificados. `CREATE_COMPLETE` por sí solo no significa que la solución esté lista.
