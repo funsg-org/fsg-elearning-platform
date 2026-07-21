@@ -2,6 +2,7 @@
 param(
     [string]$EnvironmentFile,
     [string]$OutputsFile,
+    [string]$ServiceOutputsFile,
     [switch]$Quiet
 )
 
@@ -12,6 +13,9 @@ if ([string]::IsNullOrWhiteSpace($EnvironmentFile)) {
 }
 if ([string]::IsNullOrWhiteSpace($OutputsFile)) {
     $OutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
+}
+if ([string]::IsNullOrWhiteSpace($ServiceOutputsFile)) {
+    $ServiceOutputsFile = Join-Path $repositoryRoot 'config\service-outputs.env'
 }
 
 function Import-EnvironmentFile {
@@ -67,6 +71,7 @@ $loaded = @{}
 Import-EnvironmentFile -Path (Join-Path $repositoryRoot 'config\naming.env') -LoadedValues $loaded
 Import-EnvironmentFile -Path (Join-Path $repositoryRoot 'config\tags.env') -LoadedValues $loaded
 Import-EnvironmentFile -Path $OutputsFile -LoadedValues $loaded -Optional
+Import-EnvironmentFile -Path $ServiceOutputsFile -LoadedValues $loaded -Optional
 Import-EnvironmentFile -Path $EnvironmentFile -LoadedValues $loaded -Optional
 
 if (-not $Quiet) {

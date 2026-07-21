@@ -37,6 +37,7 @@ Opcionalmente se puede indicar `-AwsProfile epico`. El archivo real `config/plat
 config/naming.env
 -> config/tags.env
 -> config/platform-outputs.env
+-> config/service-outputs.env
 -> .env local
 ```
 
@@ -55,3 +56,5 @@ Esta modalidad exige outputs completos, región `us-east-1`, cuenta de 12 dígit
 - Auth recibe `COGNITO_AUTH_CLIENT_ID`; los demás consumidores no reciben su secreto.
 - Ningún frontend recibe `COGNITO_CLIENT_SECRET_ID` ni el contenido del secreto.
 - Auth recibe el identificador del secreto y obtiene su valor en ejecución mediante su rol IAM.
+
+Las URLs de API Gateway y su traducción a variables Vite se documentan en `config/frontend-contract.md`.

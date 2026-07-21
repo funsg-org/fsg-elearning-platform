@@ -192,6 +192,7 @@ Los valores no sensibles compartidos se encuentran en:
 - `config/naming.env`: identidad, prefijo, sufijo, ambiente, región y ruta base SSM.
 - `config/tags.env`: etiquetas obligatorias para inventario y análisis de costos.
 - `config/platform-outputs.env`: salidas no sensibles generadas por CloudFormation; es local y está ignorado.
+- `config/service-outputs.env`: URLs generadas por los stacks Serverless; es local y está ignorado.
 - `.env.example`: ejemplo de sobrescrituras locales por cliente o ambiente.
 
 Para la instalación actual, el repositorio padre se llama `fsg-elearning-platform`, pero los recursos AWS utilizarán el prefijo `epico`. Los nombres de los repositorios y carpetas hijos no cambian.
@@ -234,6 +235,7 @@ El orden de precedencia es:
 config/naming.env
 -> config/tags.env
 -> config/platform-outputs.env, cuando ya existe infraestructura
+-> config/service-outputs.env, cuando ya existen microservicios
 -> .env local, si existe
 ```
 
@@ -255,6 +257,15 @@ Cuando la infraestructura compartida ya exista, generar y exigir su contrato ant
 ```
 
 El mapeo completo de Outputs y consumidores se documenta en `config/platform-contract.md`.
+
+Después de desplegar los stacks Serverless, generar las URLs y mapas locales para Amplify sin modificar aplicaciones remotas:
+
+```powershell
+.\scripts\export-serverless-outputs.ps1
+.\scripts\export-amplify-environments.ps1
+```
+
+El contrato unificado de variables `VITE_*` se encuentra en `config/frontend-contract.md`.
 
 `TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.
 

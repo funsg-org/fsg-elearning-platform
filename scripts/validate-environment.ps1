@@ -2,7 +2,9 @@
 param(
     [string]$EnvironmentFile,
     [string]$OutputsFile,
-    [switch]$RequirePlatformOutputs
+    [string]$ServiceOutputsFile,
+    [switch]$RequirePlatformOutputs,
+    [switch]$RequireServiceOutputs
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,8 +15,11 @@ if ([string]::IsNullOrWhiteSpace($EnvironmentFile)) {
 if ([string]::IsNullOrWhiteSpace($OutputsFile)) {
     $OutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
 }
+if ([string]::IsNullOrWhiteSpace($ServiceOutputsFile)) {
+    $ServiceOutputsFile = Join-Path $repositoryRoot 'config\service-outputs.env'
+}
 
-$loadedValues = . (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentFile $EnvironmentFile -OutputsFile $OutputsFile -Quiet
+$loadedValues = . (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentFile $EnvironmentFile -OutputsFile $OutputsFile -ServiceOutputsFile $ServiceOutputsFile -Quiet
 
 $requiredVariables = @(
     'SOLUTION_NAME',
@@ -48,6 +53,16 @@ $platformOutputVariables = @(
     'MEDIA_CLOUDFRONT_DISTRIBUTION_ID'
 )
 
+$serviceOutputVariables = @(
+    'AUTH_API_URL',
+    'COURSE_API_URL',
+    'MENU_API_URL',
+    'METRICS_API_URL',
+    'SUBSCRIPTIONS_API_URL',
+    'USERS_API_URL',
+    'VIDEOS_API_URL'
+)
+
 $outputsFileExists = Test-Path -LiteralPath $OutputsFile -PathType Leaf
 if ($RequirePlatformOutputs -and -not $outputsFileExists) {
     $errors.Add("No se encontró el contrato generado de infraestructura: $OutputsFile.")
@@ -58,6 +73,22 @@ if ($RequirePlatformOutputs -or $outputsFileExists) {
         $value = [Environment]::GetEnvironmentVariable($variable, 'Process')
         if ([string]::IsNullOrWhiteSpace($value) -or $value -match '^<.*>$') {
             $errors.Add("Falta una salida válida de infraestructura para $variable.")
+        }
+    }
+}
+
+$serviceOutputsFileExists = Test-Path -LiteralPath $ServiceOutputsFile -PathType Leaf
+if ($RequireServiceOutputs -and -not $serviceOutputsFileExists) {
+    $errors.Add("No se encontró el contrato generado de servicios: $ServiceOutputsFile.")
+}
+if ($RequireServiceOutputs -or $serviceOutputsFileExists) {
+    foreach ($variable in $serviceOutputVariables) {
+        $value = [Environment]::GetEnvironmentVariable($variable, 'Process')
+        if ([string]::IsNullOrWhiteSpace($value) -or $value -match '^<.*>$') {
+            $errors.Add("Falta una URL válida de servicio para $variable.")
+        }
+        elseif ($value -notmatch '^https://[a-z0-9-]+\.execute-api\.us-east-1\.amazonaws\.com/[a-z0-9-]+/?$') {
+            $errors.Add("$variable debe ser una URL HTTPS de API Gateway en us-east-1.")
         }
     }
 }
@@ -118,6 +149,7 @@ $configurationFiles = @(
     (Join-Path $repositoryRoot 'config\naming.env'),
     (Join-Path $repositoryRoot 'config\tags.env'),
     ([System.IO.Path]::GetFullPath($OutputsFile)),
+    ([System.IO.Path]::GetFullPath($ServiceOutputsFile)),
     ([System.IO.Path]::GetFullPath($EnvironmentFile))
 )
 
@@ -157,6 +189,9 @@ Write-Host "Región: $($env:AWS_REGION)"
 Write-Host "Ejemplo de recurso: $resourceExample"
 if ($outputsFileExists) {
     Write-Host "Contrato de infraestructura: $OutputsFile"
+}
+if ($serviceOutputsFileExists) {
+    Write-Host "Contrato de servicios: $ServiceOutputsFile"
 }
 Write-Host 'Tags obligatorios:'
 Write-Host "  Solution=$($env:TAG_SOLUTION)"

@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 config/platform-outputs.env
+config/service-outputs.env
+config/amplify-*-env.json
 
 # IDE y sistema operativo
 .idea/
