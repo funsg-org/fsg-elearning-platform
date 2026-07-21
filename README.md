@@ -191,6 +191,7 @@ Los valores no sensibles compartidos se encuentran en:
 
 - `config/naming.env`: identidad, prefijo, sufijo, ambiente, región y ruta base SSM.
 - `config/tags.env`: etiquetas obligatorias para inventario y análisis de costos.
+- `config/platform-outputs.env`: salidas no sensibles generadas por CloudFormation; es local y está ignorado.
 - `.env.example`: ejemplo de sobrescrituras locales por cliente o ambiente.
 
 Para la instalación actual, el repositorio padre se llama `fsg-elearning-platform`, pero los recursos AWS utilizarán el prefijo `epico`. Los nombres de los repositorios y carpetas hijos no cambian.
@@ -232,6 +233,7 @@ El orden de precedencia es:
 ```text
 config/naming.env
 -> config/tags.env
+-> config/platform-outputs.env, cuando ya existe infraestructura
 -> .env local, si existe
 ```
 
@@ -244,6 +246,15 @@ Ejecutar antes de empaquetar o construir cualquier proyecto:
 ```
 
 La validación comprueba variables obligatorias, formato de nombres, región `us-east-1`, coherencia de cliente/ambiente, ruta SSM y ausencia de variables con nombres sensibles.
+
+Cuando la infraestructura compartida ya exista, generar y exigir su contrato antes de empaquetar:
+
+```powershell
+.\scripts\export-cloudformation-outputs.ps1 -StackName epico-platform-production
+.\scripts\validate-environment.ps1 -RequirePlatformOutputs
+```
+
+El mapeo completo de Outputs y consumidores se documenta en `config/platform-contract.md`.
 
 `TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.
 

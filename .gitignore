@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+config/platform-outputs.env
 
 # IDE y sistema operativo
 .idea/
