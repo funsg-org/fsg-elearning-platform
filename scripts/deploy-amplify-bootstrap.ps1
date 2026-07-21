@@ -5,7 +5,8 @@ param(
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
     [string]$StackName = 'epico-amplify-production',
-    [string]$ParametersFile
+    [string]$ParametersFile,
+    [string]$OutputFile
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -60,5 +61,6 @@ if ($AwsProfile) { $deployArguments += @('--profile',$AwsProfile) }
 if ($LASTEXITCODE -ne 0) { throw 'Fallo el bootstrap de Amplify.' }
 $exportArguments = @{ StackName=$StackName; Region=$Region }
 if ($AwsProfile) { $exportArguments.AwsProfile=$AwsProfile }
+if ($OutputFile) { $exportArguments.OutputFile=$OutputFile }
 & (Join-Path $PSScriptRoot 'export-amplify-outputs.ps1') @exportArguments
 Write-Host 'Bootstrap completado. Los builds permanecen desactivados.' -ForegroundColor Green

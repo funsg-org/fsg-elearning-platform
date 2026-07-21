@@ -6,7 +6,9 @@ param(
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
     [string]$StackName = 'epico-platform-production',
+    [string]$AmplifyStackName = 'epico-amplify-production',
     [string]$ParametersFile,
+    [string]$AmplifyParametersFile,
     [string]$AmplifyOutputsFile
 )
 
@@ -17,6 +19,9 @@ if ([string]::IsNullOrWhiteSpace($ParametersFile)) {
 }
 if ([string]::IsNullOrWhiteSpace($AmplifyOutputsFile)) {
     $AmplifyOutputsFile = Join-Path $repositoryRoot 'config\amplify-outputs.env'
+}
+if ([string]::IsNullOrWhiteSpace($AmplifyParametersFile)) {
+    $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json'
 }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\shared-resources.yml'
 $platformOutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
@@ -70,6 +75,7 @@ function Get-CloudFormationParameters {
 
 Write-Host "Modo: $(if ($Execute) { 'EJECUCIÓN' } else { 'PLAN SEGURO' })"
 Write-Host "Stack compartido: $StackName"
+Write-Host "Stack Amplify: $AmplifyStackName"
 Write-Host "Región: $Region"
 
 if ($Region -ne 'us-east-1') {
@@ -109,15 +115,17 @@ foreach ($service in $services) {
 }
 
 & (Join-Path $PSScriptRoot 'validate-infrastructure.ps1') -TemplateFile $templateFile -Region $Region -AwsProfile $AwsProfile
+& (Join-Path $PSScriptRoot 'validate-amplify-infrastructure.ps1') -Region $Region -AwsProfile $AwsProfile
 
 if (-not $Execute) {
     Write-Host ''
     Write-Host 'Orden que se ejecutará:' -ForegroundColor Cyan
-    Write-Host '1. Leer y validar las URLs de los dos frontends desde config/amplify-outputs.env.'
-    Write-Host '2. Inyectar ambos orígenes exactos en el CORS de S3 y desplegar CloudFormation compartido.'
-    Write-Host '3. Exportar Cognito, Secrets Manager, S3 y CloudFront.'
-    Write-Host '4. Validar el contrato de plataforma.'
-    $step = 5
+    Write-Host '1. Crear o actualizar las aplicaciones Amplify con auto-build desactivado.'
+    Write-Host '2. Exportar y validar las URLs de ambos frontends.'
+    Write-Host '3. Inyectar los orígenes exactos en el CORS y desplegar CloudFormation compartido.'
+    Write-Host '4. Exportar Cognito, Secrets Manager, S3 y CloudFront.'
+    Write-Host '5. Validar el contrato de plataforma.'
+    $step = 6
     foreach ($service in $services) {
         Write-Host "$step. Desplegar $service."
         $step++
@@ -125,17 +133,33 @@ if (-not $Execute) {
     Write-Host "$step. Exportar URLs de API Gateway."
     $step++
     Write-Host "$step. Generar mapas locales para Amplify."
+    $step++
+    Write-Host "$step. Aplicar variables públicas a ambas ramas manteniendo auto-build desactivado."
     Write-Host ''
-    Write-Warning 'No se creó ni modificó ningún recurso. Use -Execute únicamente después de completar parameters.json.'
+    Write-Warning 'No se creó ni modificó ningún recurso. Use -Execute únicamente después de completar ambos archivos parameters.json.'
     exit 0
 }
 
 if (-not (Test-Path -LiteralPath $ParametersFile -PathType Leaf)) {
     throw "Falta el archivo local de parámetros: $ParametersFile. Copie infrastructure/parameters.example.json y complete CostCenter."
 }
+if (-not (Test-Path -LiteralPath $AmplifyParametersFile -PathType Leaf)) {
+    throw "Falta el archivo local de parámetros Amplify: $AmplifyParametersFile."
+}
 if ($ExpectedAccountId -notmatch '^\d{12}$') {
     throw 'Debe indicar -ExpectedAccountId con los 12 dígitos de la cuenta destino.'
 }
+$amplifyBootstrapArguments = @{
+    Execute = $true
+    StackName = $AmplifyStackName
+    ParametersFile = $AmplifyParametersFile
+    ExpectedAccountId = $ExpectedAccountId
+    Region = $Region
+    OutputFile = $AmplifyOutputsFile
+}
+if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $amplifyBootstrapArguments.AwsProfile = $AwsProfile }
+& (Join-Path $PSScriptRoot 'deploy-amplify-bootstrap.ps1') @amplifyBootstrapArguments
+
 $corsAllowedOrigins = & (Join-Path $PSScriptRoot 'get-amplify-cors-origins.ps1') -AmplifyOutputsFile $AmplifyOutputsFile
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($corsAllowedOrigins)) {
     throw 'No se pudieron resolver los orígenes CORS desde Amplify.'
@@ -189,5 +213,10 @@ if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $exportServicesArguments.A
 & (Join-Path $PSScriptRoot 'validate-environment.ps1') -OutputsFile $platformOutputsFile -ServiceOutputsFile $serviceOutputsFile -RequirePlatformOutputs -RequireServiceOutputs
 & (Join-Path $PSScriptRoot 'export-amplify-environments.ps1') -PlatformOutputsFile $platformOutputsFile -ServiceOutputsFile $serviceOutputsFile
 
+$configureAmplifyArguments = @{ Execute=$true; StackName=$AmplifyStackName; Region=$Region }
+if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $configureAmplifyArguments.AwsProfile=$AwsProfile }
+& (Join-Path $PSScriptRoot 'configure-amplify-branches.ps1') @configureAmplifyArguments
+
 Write-Host 'Despliegue de infraestructura y microservicios completado.' -ForegroundColor Green
-Write-Host 'Amplify no fue modificado. Revise config/amplify-*-env.json antes de aplicarlo manualmente.'
+Write-Host 'Las ramas Amplify recibieron sus variables públicas, pero los builds permanecen desactivados.'
+Write-Host 'Active el primer build únicamente después de revisar los mapas generados y aprobar el despliegue.'

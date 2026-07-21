@@ -50,3 +50,5 @@ Después de autorizar Amplify GitHub App, crear el secreto, completar `amplify-p
 ```
 
 El modo de ejecución comprueba la identidad AWS y la existencia del secreto antes de crear el stack. Al terminar genera `config/amplify-outputs.env`, que está ignorado por Git.
+
+Normalmente no es necesario ejecutar el bootstrap por separado: `scripts/deploy-platform.ps1 -Execute` ya lo coordina al inicio y, al final, aplica las variables públicas manteniendo desactivados los builds.
