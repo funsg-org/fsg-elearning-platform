@@ -8,6 +8,8 @@ $requiredFiles = @(
     'config/naming.env',
     'config/tags.env',
     'config/implementation-manual.md',
+    'config/client-installation-manual.md',
+    'config/provider-project-deployment-manual.md',
     'config/client-deployment-handover.md',
     'infrastructure/shared-resources.yml',
     'infrastructure/amplify-hosting.yml',
@@ -21,6 +23,7 @@ $requiredFiles = @(
     'scripts/write-service-recovery-instructions.ps1',
     'scripts/test-deployment-readiness.ps1'
     'scripts/create-initial-cognito-administrator.ps1'
+    'scripts/build-client-deployment-package.ps1'
 )
 foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath) -PathType Leaf)) { throw "Falta el archivo obligatorio '$relativePath'." }

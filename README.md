@@ -277,7 +277,7 @@ Para validar y visualizar el orden completo sin desplegar:
 
 El modo de ejecución requiere `-Execute`, parámetros locales completos y confirmación previa de costos/CORS. Sus reglas se documentan en `config/deployment-order.md`.
 
-El runbook interno que ejecuta exclusivamente FSG está en `config/implementation-manual.md`. El formato de entrega al cliente, sin código fuente, está en `config/client-deployment-handover.md`.
+La coordinación está en `config/implementation-manual.md`. El cliente ejecuta `config/client-installation-manual.md`; FSG ejecuta solamente la fase privada descrita en `config/provider-project-deployment-manual.md`; la aceptación se registra en `config/client-deployment-handover.md`.
 
 `TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.
 

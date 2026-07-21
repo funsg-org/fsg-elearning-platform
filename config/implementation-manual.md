@@ -1,4 +1,6 @@
-# Manual interno de despliegue para el proveedor/desarrollador FSG
+# Manual de coordinación de la implementación
+
+> Este documento fue dividido para reflejar correctamente las responsabilidades. No debe utilizarse como runbook operativo. El cliente utiliza `client-installation-manual.md`; el proveedor utiliza `provider-project-deployment-manual.md`; la entrega final se registra en `client-deployment-handover.md`.
 
 Este runbook instala FSG E-learning para EPICO en una cuenta AWS ya creada. Es documentación interna de FSG y debe ser ejecutado exclusivamente por el desarrollador/proveedor responsable. No es un manual para el cliente.
 

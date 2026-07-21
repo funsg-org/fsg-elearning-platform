@@ -23,6 +23,7 @@ build/
 .serverless/
 *.log
 artifacts/recovery/
+artifacts/client-deployment-kit/
 
 # Documentos de trabajo locales
 aprendamosgye-deployment-plan/
