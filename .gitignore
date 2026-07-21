@@ -8,6 +8,7 @@ config/amplify-*-env.json
 config/amplify-outputs.env
 infrastructure/parameters.json
 infrastructure/amplify-parameters.json
+infrastructure/deployment-role-parameters.json
 
 # IDE y sistema operativo
 .idea/

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$ExpectedAccountId,
+    [Parameter(Mandatory = $true)][string]$ExpectedDeploymentRoleArn,
     [string]$AwsProfile,
     [string]$Region = 'us-east-1',
     [string]$ParametersFile,
@@ -110,7 +111,10 @@ $identityRaw = & aws sts get-caller-identity --output json @awsBase
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo consultar la identidad AWS.' }
 $identity = ($identityRaw -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta AWS activa $($identity.Account); se esperaba $ExpectedAccountId." }
+$expectedRoleName = ($ExpectedDeploymentRoleArn -split '/')[-1]
+if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/$([regex]::Escape($expectedRoleName))/") { throw "La identidad activa no es una sesión del rol '$ExpectedDeploymentRoleArn'." }
 Add-Check "Cuenta AWS verificada: $($identity.Account)"
+Add-Check "Sesion STS del rol de despliegue verificada: $expectedRoleName"
 & (Join-Path $PSScriptRoot 'import-serverless-access-key.ps1') -SecretId $env:SERVERLESS_ACCESS_KEY_SECRET_ID -AwsProfile $AwsProfile -Region $Region
 if (-not $env:SERVERLESS_ACCESS_KEY) { throw 'SERVERLESS_ACCESS_KEY no quedo disponible en memoria.' }
 Add-Check 'SERVERLESS_ACCESS_KEY cargada desde Secrets Manager (valor no mostrado)'

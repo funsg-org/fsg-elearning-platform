@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Bootstrap IAM role used to deploy the EPICO platform with bounded permissions.
+
+Parameters:
+  TrustedPrincipalArn:
+    Type: String
+    AllowedPattern: '^arn:aws:iam::[0-9]{12}:(user|role)/[A-Za-z0-9+=,.@_/-]+$'
+  ResourcePrefix:
+    Type: String
+    Default: epico
+  Environment:
+    Type: String
+    Default: production
+  SolutionTag: { Type: String, Default: E-Learning }
+  ProjectTag: { Type: String, Default: FSG-Elearning }
+  ClientTag: { Type: String, Default: EPICO }
+  OwnerTag: { Type: String, Default: FSG }
+  ManagedByTag: { Type: String, Default: IaC }
+  CostCenterTag: { Type: String }
+
+Resources:
+  DeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ResourcePrefix}-deployment-${Environment}'
+      MaxSessionDuration: 14400
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref TrustedPrincipalArn
+            Action: sts:AssumeRole
+      Tags:
+        - { Key: Solution, Value: !Ref SolutionTag }
+        - { Key: Project, Value: !Ref ProjectTag }
+        - { Key: Client, Value: !Ref ClientTag }
+        - { Key: Environment, Value: !Ref Environment }
+        - { Key: Owner, Value: !Ref OwnerTag }
+        - { Key: ManagedBy, Value: !Ref ManagedByTag }
+        - { Key: CostCenter, Value: !Ref CostCenterTag }
+      Policies:
+        - PolicyName: epico-platform-deployment
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Identity
+                Effect: Allow
+                Action: sts:GetCallerIdentity
+                Resource: '*'
+              - Sid: CloudFormation
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:ListStackResources
+                Resource:
+                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/${ResourcePrefix}-*/*'
+                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:stack/ms-${ResourcePrefix}-*/*'
+                  - !Sub 'arn:aws:cloudformation:us-east-1:${AWS::AccountId}:changeSet/*/*'
+              - Sid: CloudFormationTemplateValidation
+                Effect: Allow
+                Action:
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ValidateTemplate
+                Resource: '*'
+              - Sid: Lambda
+                Effect: Allow
+                Action: 'lambda:*'
+                Resource:
+                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:function:${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:function:ms-${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:lambda:us-east-1:${AWS::AccountId}:layer:*'
+              - Sid: ApiGateway
+                Effect: Allow
+                Action: 'apigateway:*'
+                Resource: 'arn:aws:apigateway:us-east-1::*'
+              - Sid: DynamoDb
+                Effect: Allow
+                Action: 'dynamodb:*'
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:dynamodb:us-east-1:${AWS::AccountId}:table/${ResourcePrefix}-*/index/*'
+              - Sid: MediaAndDeploymentBuckets
+                Effect: Allow
+                Action: 's3:*'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:s3:::${ResourcePrefix}-*/*'
+                  - 'arn:aws:s3:::serverless-framework-deployments-us-east-1-*'
+                  - 'arn:aws:s3:::serverless-framework-deployments-us-east-1-*/*'
+              - Sid: Cognito
+                Effect: Allow
+                Action: 'cognito-idp:*'
+                Resource: !Sub 'arn:aws:cognito-idp:us-east-1:${AWS::AccountId}:userpool/*'
+              - Sid: CloudFront
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateDistribution
+                  - cloudfront:GetDistribution
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:UpdateDistribution
+                  - cloudfront:DeleteDistribution
+                  - cloudfront:TagResource
+                  - cloudfront:UntagResource
+                  - cloudfront:CreateOriginAccessControl
+                  - cloudfront:GetOriginAccessControl
+                  - cloudfront:GetOriginAccessControlConfig
+                  - cloudfront:UpdateOriginAccessControl
+                  - cloudfront:DeleteOriginAccessControl
+                  - cloudfront:ListTagsForResource
+                Resource: '*'
+              - Sid: Amplify
+                Effect: Allow
+                Action:
+                  - amplify:CreateApp
+                  - amplify:GetApp
+                  - amplify:UpdateApp
+                  - amplify:DeleteApp
+                  - amplify:CreateBranch
+                  - amplify:GetBranch
+                  - amplify:UpdateBranch
+                  - amplify:DeleteBranch
+                  - amplify:StartJob
+                  - amplify:GetJob
+                  - amplify:ListJobs
+                  - amplify:TagResource
+                  - amplify:UntagResource
+                Resource: '*'
+              - Sid: EpicoSecrets
+                Effect: Allow
+                Action:
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:UpdateSecret
+                  - secretsmanager:TagResource
+                  - secretsmanager:DeleteSecret
+                Resource: !Sub 'arn:aws:secretsmanager:us-east-1:${AWS::AccountId}:secret:${ResourcePrefix}/*'
+              - Sid: ServerlessState
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
+                  - ssm:AddTagsToResource
+                Resource:
+                  - !Sub 'arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/${ResourcePrefix}/*'
+                  - !Sub 'arn:aws:ssm:us-east-1:${AWS::AccountId}:parameter/serverless-framework/*'
+              - Sid: Logs
+                Effect: Allow
+                Action: 'logs:*'
+                Resource:
+                  - !Sub 'arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/lambda/${ResourcePrefix}-*'
+                  - !Sub 'arn:aws:logs:us-east-1:${AWS::AccountId}:log-group:/aws/lambda/ms-${ResourcePrefix}-*'
+              - Sid: ManageEpicoLambdaRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:GetRole
+                  - iam:DeleteRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*${ResourcePrefix}*'
+              - Sid: PassEpicoRolesToLambda
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*${ResourcePrefix}*'
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+
+Outputs:
+  DeploymentRoleArn:
+    Value: !GetAtt DeploymentRole.Arn
+  DeploymentRoleName:
+    Value: !Ref DeploymentRole

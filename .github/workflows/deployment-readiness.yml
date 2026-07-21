@@ -54,4 +54,5 @@ jobs:
         run: |
           .ci-venv/bin/cfn-lint --regions us-east-1 -- \
             infrastructure/shared-resources.yml \
-            infrastructure/amplify-hosting.yml
+            infrastructure/amplify-hosting.yml \
+            infrastructure/deployment-role.yml

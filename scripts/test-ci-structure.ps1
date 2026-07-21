@@ -9,8 +9,10 @@ $requiredFiles = @(
     'config/tags.env',
     'infrastructure/shared-resources.yml',
     'infrastructure/amplify-hosting.yml',
+    'infrastructure/deployment-role.yml',
     'infrastructure/parameters.example.json',
     'infrastructure/amplify-parameters.example.json',
+    'infrastructure/deployment-role-parameters.example.json',
     'scripts/deploy-platform.ps1',
     'scripts/test-deployment-readiness.ps1'
 )
@@ -45,5 +47,6 @@ if ($configuredBranches.Count -ne 10 -or ($configuredBranches | Where-Object { $
 
 $workflowText = Get-Content -LiteralPath (Join-Path $repositoryRoot '.github/workflows/deployment-readiness.yml') -Raw
 if ($workflowText -notmatch [regex]::Escape($expectedBranch)) { throw 'El workflow no referencia la rama de preparacion.' }
+if ($workflowText -notmatch 'infrastructure/deployment-role\.yml') { throw 'El workflow no valida la plantilla del rol de despliegue.' }
 if ($workflowText -match '(?im)aws-access-key-id|aws-secret-access-key|role-to-assume|cloudformation deploy|serverless deploy') { throw 'El workflow estructural no puede contener credenciales ni comandos de despliegue.' }
 Write-Host "Estructura CI valida: $($trackedScripts.Count) scripts, 10 submodulos y 2 contratos JSON." -ForegroundColor Green

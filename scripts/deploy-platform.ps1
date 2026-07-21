@@ -4,6 +4,7 @@ param(
     [switch]$AllowDirty,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
+    [string]$DeploymentRoleArn,
     [string]$Region = 'us-east-1',
     [string]$StackName = 'epico-platform-production',
     [string]$AmplifyStackName = 'epico-amplify-production',
@@ -149,8 +150,12 @@ if (-not (Test-Path -LiteralPath $AmplifyParametersFile -PathType Leaf)) {
 if ($ExpectedAccountId -notmatch '^\d{12}$') {
     throw 'Debe indicar -ExpectedAccountId con los 12 dígitos de la cuenta destino.'
 }
+if (-not $DeploymentRoleArn) { throw 'Debe indicar -DeploymentRoleArn para evitar despliegues con el principal bootstrap.' }
+& (Join-Path $PSScriptRoot 'enter-deployment-role.ps1') -RoleArn $DeploymentRoleArn -AwsProfile $AwsProfile -Region $Region
+$AwsProfile = $null
 $preflightArguments = @{
     ExpectedAccountId=$ExpectedAccountId
+    ExpectedDeploymentRoleArn=$DeploymentRoleArn
     Region=$Region
     ParametersFile=$ParametersFile
     AmplifyParametersFile=$AmplifyParametersFile

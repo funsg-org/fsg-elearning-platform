@@ -19,19 +19,22 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
 3. Autorizar Amplify GitHub App y crear el secreto indicado por `GitHubAccessTokenSecretId`.
 4. Crear el secreto operativo de Serverless documentado en `config/secrets.md`.
 5. Configurar credenciales AWS mediante perfil u OIDC.
-6. Ejecutar:
+6. Crear una sola vez el rol descrito en `config/deployment-role.md`.
+7. Ejecutar:
 
 ```powershell
 .\scripts\deploy-platform.ps1 `
   -Execute `
   -AwsProfile epico `
-  -ExpectedAccountId 123456789012
+  -ExpectedAccountId 123456789012 `
+  -DeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
 ```
 
 Antes de cualquier escritura, `-Execute` ejecuta automáticamente `scripts/test-deployment-readiness.ps1`. El preflight puede ejecutarse también de forma independiente para diagnosticar la estación y las credenciales:
 
 ```powershell
-.\scripts\test-deployment-readiness.ps1 -AwsProfile epico -ExpectedAccountId 123456789012
+.\scripts\enter-deployment-role.ps1 -RoleArn arn:aws:iam::123456789012:role/epico-deployment-production -AwsProfile epico
+.\scripts\test-deployment-readiness.ps1 -ExpectedAccountId 123456789012 -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
 ```
 
 La opción `-SkipRemoteChecks` omite únicamente `git ls-remote`; no omite identidad AWS, secreto, parámetros ni plantillas.
