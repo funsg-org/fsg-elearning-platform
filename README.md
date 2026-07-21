@@ -267,6 +267,16 @@ Después de desplegar los stacks Serverless, generar las URLs y mapas locales pa
 
 El contrato unificado de variables `VITE_*` se encuentra en `config/frontend-contract.md`.
 
+### Orquestación segura
+
+Para validar y visualizar el orden completo sin desplegar:
+
+```powershell
+.\scripts\deploy-platform.ps1
+```
+
+El modo de ejecución requiere `-Execute`, parámetros locales completos y confirmación previa de costos/CORS. Sus reglas se documentan en `config/deployment-order.md`.
+
 `TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.
 
 Los tags comunes definidos son:
