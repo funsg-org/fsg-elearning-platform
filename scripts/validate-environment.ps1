@@ -41,6 +41,7 @@ $platformOutputVariables = @(
     'AWS_ACCOUNT_ID',
     'COGNITO_USER_POOL_ID',
     'COGNITO_CLIENT_ID',
+    'COGNITO_AUTH_CLIENT_ID',
     'COGNITO_CLIENT_SECRET_ID',
     'MEDIA_BUCKET_NAME',
     'MEDIA_CDN_URL',

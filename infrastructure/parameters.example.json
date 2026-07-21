@@ -1,0 +1,12 @@
+[
+  { "ParameterKey": "ResourcePrefix", "ParameterValue": "epico" },
+  { "ParameterKey": "ResourceSuffix", "ParameterValue": "production" },
+  { "ParameterKey": "Environment", "ParameterValue": "production" },
+  { "ParameterKey": "SolutionTag", "ParameterValue": "E-Learning" },
+  { "ParameterKey": "ProjectTag", "ParameterValue": "FSG-Elearning" },
+  { "ParameterKey": "ClientTag", "ParameterValue": "EPICO" },
+  { "ParameterKey": "OwnerTag", "ParameterValue": "FSG" },
+  { "ParameterKey": "ManagedByTag", "ParameterValue": "IaC" },
+  { "ParameterKey": "CostCenterTag", "ParameterValue": "PENDING" },
+  { "ParameterKey": "MediaCorsAllowedOrigins", "ParameterValue": "*" }
+]

@@ -6,6 +6,8 @@ Los secretos de la plataforma no se almacenan en Git, archivos `.env`, variables
 
 El microservicio `ms-aprendamosgye-auth` utiliza un App Client confidencial y necesita calcular `SECRET_HASH`. El valor se recupera en tiempo de ejecución desde AWS Secrets Manager.
 
+La infraestructura crea además un App Client público independiente para los frontends. El cliente público nunca tiene secreto; Auth utiliza exclusivamente `COGNITO_AUTH_CLIENT_ID` junto con `COGNITO_CLIENT_SECRET_ID`.
+
 Nombre lógico inicial del secreto:
 
 ```text
@@ -38,9 +40,12 @@ Su rol permite exclusivamente `secretsmanager:GetSecretValue` sobre ese secreto.
 - Todo secreto previamente versionado se considera comprometido y debe deshabilitarse o reemplazarse en su sistema de origen.
 - El repositorio padre solo conserva nombres o ARNs de secretos, nunca sus valores.
 
+## Implementación IaC
+
+- `infrastructure/shared-resources.yml` crea ambos App Clients y el secreto.
+- Un recurso personalizado escribe el Client Secret generado por Cognito directamente en Secrets Manager sin publicarlo como Output.
+
 ## Pendientes operativos
 
-- Crear el App Client confidencial de EPICO durante la etapa IaC.
-- Crear el secreto mediante CloudFormation o un procedimiento seguro sin imprimir el valor.
 - Deshabilitar los Access Key IDs encontrados en el historial de los repositorios heredados.
 - Reemplazar el App Client cuyo secreto apareció en el historial de `ms-aprendamosgye-auth`.

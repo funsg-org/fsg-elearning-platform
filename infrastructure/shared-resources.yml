@@ -1,0 +1,419 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Shared EPICO e-learning infrastructure (Cognito, Secrets Manager, S3 and CloudFront).
+
+Parameters:
+  ResourcePrefix:
+    Type: String
+    Default: epico
+    AllowedPattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+  ResourceSuffix:
+    Type: String
+    Default: production
+    AllowedPattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+  SolutionTag:
+    Type: String
+    Default: E-Learning
+  ProjectTag:
+    Type: String
+    Default: FSG-Elearning
+  ClientTag:
+    Type: String
+    Default: EPICO
+  OwnerTag:
+    Type: String
+    Default: FSG
+  ManagedByTag:
+    Type: String
+    Default: IaC
+  CostCenterTag:
+    Type: String
+    Default: PENDING
+  MediaCorsAllowedOrigins:
+    Type: CommaDelimitedList
+    Default: '*'
+    Description: Origins allowed to use presigned S3 requests. Replace the wildcard when Amplify URLs are final.
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub '${ResourcePrefix}-users-${ResourceSuffix}'
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      MfaConfiguration: 'OFF'
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: phone_number
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      UserPoolTags:
+        Solution: !Ref SolutionTag
+        Project: !Ref ProjectTag
+        Client: !Ref ClientTag
+        Environment: !Ref Environment
+        Owner: !Ref OwnerTag
+        ManagedBy: !Ref ManagedByTag
+        CostCenter: !Ref CostCenterTag
+        Service: identity
+
+  PublicUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ResourcePrefix}-public-${ResourceSuffix}'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+  AuthUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ResourcePrefix}-auth-${ResourceSuffix}'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+  AuthClientSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub '${ResourcePrefix}/${Environment}/cognito/auth-client-secret'
+      Description: Cognito confidential App Client secret used only by the Auth microservice.
+      Tags:
+        - Key: Solution
+          Value: !Ref SolutionTag
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Client
+          Value: !Ref ClientTag
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref OwnerTag
+        - Key: ManagedBy
+          Value: !Ref ManagedByTag
+        - Key: CostCenter
+          Value: !Ref CostCenterTag
+        - Key: Service
+          Value: identity
+
+  SecretWriterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ResourcePrefix}-cognito-secret-writer-${ResourceSuffix}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteGeneratedCognitoSecret
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: cognito-idp:DescribeUserPoolClient
+                Resource: '*'
+              - Effect: Allow
+                Action: secretsmanager:PutSecretValue
+                Resource: !Ref AuthClientSecret
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ResourcePrefix}-cognito-secret-writer-${ResourceSuffix}:*'
+      Tags:
+        - Key: Solution
+          Value: !Ref SolutionTag
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Client
+          Value: !Ref ClientTag
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref OwnerTag
+        - Key: ManagedBy
+          Value: !Ref ManagedByTag
+        - Key: CostCenter
+          Value: !Ref CostCenterTag
+        - Key: Service
+          Value: identity
+
+  SecretWriterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ResourcePrefix}-cognito-secret-writer-${ResourceSuffix}'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt SecretWriterRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import urllib.request
+
+          def respond(event, context, status, reason=None):
+              body = json.dumps({
+                  'Status': status,
+                  'Reason': reason or 'Operation completed',
+                  'PhysicalResourceId': event.get('PhysicalResourceId', context.log_stream_name),
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'NoEcho': True,
+                  'Data': {}
+              }).encode('utf-8')
+              request = urllib.request.Request(
+                  event['ResponseURL'], data=body, method='PUT',
+                  headers={'content-type': '', 'content-length': str(len(body))})
+              with urllib.request.urlopen(request) as response:
+                  response.read()
+
+          def handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      respond(event, context, 'SUCCESS')
+                      return
+                  properties = event['ResourceProperties']
+                  cognito = boto3.client('cognito-idp')
+                  secrets = boto3.client('secretsmanager')
+                  client = cognito.describe_user_pool_client(
+                      UserPoolId=properties['UserPoolId'],
+                      ClientId=properties['ClientId'])['UserPoolClient']
+                  client_secret = client['ClientSecret']
+                  secrets.put_secret_value(
+                      SecretId=properties['SecretId'],
+                      SecretString=json.dumps({'clientSecret': client_secret}))
+                  respond(event, context, 'SUCCESS')
+              except Exception as error:
+                  respond(event, context, 'FAILED', str(error))
+      Tags:
+        - Key: Solution
+          Value: !Ref SolutionTag
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Client
+          Value: !Ref ClientTag
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref OwnerTag
+        - Key: ManagedBy
+          Value: !Ref ManagedByTag
+        - Key: CostCenter
+          Value: !Ref CostCenterTag
+        - Key: Service
+          Value: identity
+
+  StoreAuthClientSecret:
+    Type: Custom::StoreCognitoClientSecret
+    Properties:
+      ServiceToken: !GetAtt SecretWriterFunction.Arn
+      UserPoolId: !Ref UserPool
+      ClientId: !Ref AuthUserPoolClient
+      SecretId: !Ref AuthClientSecret
+
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub '${ResourcePrefix}-media-${ResourceSuffix}-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, HEAD, POST, PUT]
+            AllowedOrigins: !Ref MediaCorsAllowedOrigins
+            ExposedHeaders: [ETag]
+            MaxAge: 3600
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: ExpireNoncurrentVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+      Tags:
+        - Key: Solution
+          Value: !Ref SolutionTag
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Client
+          Value: !Ref ClientTag
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref OwnerTag
+        - Key: ManagedBy
+          Value: !Ref ManagedByTag
+        - Key: CostCenter
+          Value: !Ref CostCenterTag
+        - Key: Service
+          Value: media
+
+  MediaOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ResourcePrefix}-media-${ResourceSuffix}-oac'
+        Description: Signed CloudFront access to the private media bucket.
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  MediaDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${ResourcePrefix} media ${ResourceSuffix}'
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: MediaS3Origin
+            DomainName: !GetAtt MediaBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt MediaOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: MediaS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Solution
+          Value: !Ref SolutionTag
+        - Key: Project
+          Value: !Ref ProjectTag
+        - Key: Client
+          Value: !Ref ClientTag
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref OwnerTag
+        - Key: ManagedBy
+          Value: !Ref ManagedByTag
+        - Key: CostCenter
+          Value: !Ref CostCenterTag
+        - Key: Service
+          Value: media
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${MediaBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${MediaDistribution}'
+
+Outputs:
+  AwsAccountId:
+    Description: AWS account that owns the platform.
+    Value: !Ref AWS::AccountId
+  CognitoUserPoolId:
+    Description: EPICO Cognito User Pool ID.
+    Value: !Ref UserPool
+  CognitoClientId:
+    Description: Public Cognito App Client ID for frontends and API token validation.
+    Value: !Ref PublicUserPoolClient
+  CognitoAuthClientId:
+    Description: Confidential Cognito App Client ID used only by Auth.
+    Value: !Ref AuthUserPoolClient
+  CognitoClientSecretId:
+    Description: Secrets Manager identifier; never the secret value.
+    Value: !Sub '${ResourcePrefix}/${Environment}/cognito/auth-client-secret'
+  MediaBucketName:
+    Description: Private media S3 bucket.
+    Value: !Ref MediaBucket
+  MediaCdnUrl:
+    Description: CloudFront URL without custom domain.
+    Value: !Sub 'https://${MediaDistribution.DomainName}'
+  MediaCloudFrontDistributionId:
+    Description: CloudFront distribution identifier.
+    Value: !Ref MediaDistribution

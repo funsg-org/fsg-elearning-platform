@@ -14,7 +14,8 @@ La infraestructura debe publicar exactamente estos Outputs:
 | --- | --- | --- |
 | `AwsAccountId` | `AWS_ACCOUNT_ID` | Validación y automatización |
 | `CognitoUserPoolId` | `COGNITO_USER_POOL_ID` | Microservicios y frontends |
-| `CognitoClientId` | `COGNITO_CLIENT_ID` | Autenticación y autorización |
+| `CognitoClientId` | `COGNITO_CLIENT_ID` | Frontends y validación de tokens públicos |
+| `CognitoAuthClientId` | `COGNITO_AUTH_CLIENT_ID` | Solo Auth; cliente confidencial |
 | `CognitoClientSecretId` | `COGNITO_CLIENT_SECRET_ID` | Solo Auth |
 | `MediaBucketName` | `MEDIA_BUCKET_NAME` | Course y Videos |
 | `MediaCdnUrl` | `MEDIA_CDN_URL` | Course, Videos y frontends |
@@ -50,6 +51,7 @@ Esta modalidad exige outputs completos, región `us-east-1`, cuenta de 12 dígit
 ## Distribución a consumidores
 
 - Serverless recibe las variables después de ejecutar `load-environment.ps1`.
-- Amplify recibe User Pool ID, Client ID, CDN y URLs públicas.
+- Amplify recibe User Pool ID, `COGNITO_CLIENT_ID`, CDN y URLs públicas.
+- Auth recibe `COGNITO_AUTH_CLIENT_ID`; los demás consumidores no reciben su secreto.
 - Ningún frontend recibe `COGNITO_CLIENT_SECRET_ID` ni el contenido del secreto.
 - Auth recibe el identificador del secreto y obtiene su valor en ejecución mediante su rol IAM.
