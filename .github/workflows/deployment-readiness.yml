@@ -1,0 +1,57 @@
+name: Deployment readiness
+
+on:
+  push:
+    branches:
+      - feature/epico-deployment-readiness
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-orchestrator:
+    if: github.event_name != 'pull_request' || github.head_ref == 'feature/epico-deployment-readiness'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout orchestrator without private submodules
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+
+      - name: Validate repository contracts and PowerShell syntax
+        shell: pwsh
+        run: ./scripts/test-ci-structure.ps1
+
+      - name: Scan tracked files for credential patterns
+        shell: pwsh
+        run: ./scripts/scan-secrets.ps1
+
+      - name: Set up supported Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install pinned CloudFormation linter
+        shell: bash
+        run: |
+          python3 -m venv .ci-venv
+          .ci-venv/bin/python -m pip install --disable-pip-version-check cfn-lint==1.53.1
+
+      - name: Validate CloudFormation offline
+        shell: bash
+        run: |
+          .ci-venv/bin/cfn-lint --regions us-east-1 -- \
+            infrastructure/shared-resources.yml \
+            infrastructure/amplify-hosting.yml

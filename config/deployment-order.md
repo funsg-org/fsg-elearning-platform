@@ -49,3 +49,5 @@ El preflight verifica los permisos de lectura que puede comprobar sin mutaciones
 - Rechaza `CostCenterTag=PENDING` y URLs que no sean orígenes HTTPS predeterminados de Amplify.
 
 Al finalizar, las variables quedan cargadas en ambas ramas de preparación. La publicación requiere el comando explícito documentado en `config/amplify-hosting.md`.
+
+Las validaciones estructurales que no requieren cuenta AWS se ejecutan también en GitHub Actions. Consulte `config/continuous-validation.md`.
