@@ -25,6 +25,7 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
 ```powershell
 .\scripts\deploy-platform.ps1 `
   -Execute `
+  -ApproveChangeSets `
   -AwsProfile epico `
   -ExpectedAccountId 123456789012 `
   -DeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
@@ -57,3 +58,5 @@ Los siete microservicios declaran `frameworkVersion: '~4.39.0'`. Esto evita actu
 Al finalizar, las variables quedan cargadas en ambas ramas de preparación. La publicación requiere el comando explícito documentado en `config/amplify-hosting.md`.
 
 Las validaciones estructurales que no requieren cuenta AWS se ejecutan también en GitHub Actions. Consulte `config/continuous-validation.md`.
+
+Los tres stacks CloudFormation directos usan una compuerta de change sets documentada en `config/change-set-approval.md`.

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
+    [switch]$ApproveChangeSets,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
@@ -25,6 +26,7 @@ if (-not $Execute) {
     Write-Warning 'No se creo ni modifico ningun recurso AWS.'
     exit 0
 }
+if (-not $ApproveChangeSets) { throw 'La ejecución requiere -ApproveChangeSets después de revisar el alcance previsto.' }
 
 if (-not (Test-Path -LiteralPath $ParametersFile -PathType Leaf)) { throw 'Copie amplify-parameters.example.json como amplify-parameters.json y complete sus valores.' }
 if ($ExpectedAccountId -notmatch '^\d{12}$') { throw 'Indique -ExpectedAccountId con los 12 digitos de la cuenta destino.' }
@@ -52,13 +54,9 @@ if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta activa $($identity
 & aws secretsmanager describe-secret --secret-id $values.GitHubAccessTokenSecretId @awsBase | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "No existe o no es accesible el secreto '$($values.GitHubAccessTokenSecretId)'." }
 
-$deployArguments = @(
-    'cloudformation','deploy','--template-file',$templateFile,'--stack-name',$StackName,
-    '--region',$Region,'--no-fail-on-empty-changeset','--parameter-overrides'
-) + $overrides.ToArray()
-if ($AwsProfile) { $deployArguments += @('--profile',$AwsProfile) }
-& aws @deployArguments
-if ($LASTEXITCODE -ne 0) { throw 'Fallo el bootstrap de Amplify.' }
+$changeSetArguments = @{ StackName=$StackName; TemplateFile=$templateFile; ParameterOverrides=$overrides.ToArray(); ApproveExecution=$true; Region=$Region }
+if ($AwsProfile) { $changeSetArguments.AwsProfile=$AwsProfile }
+& (Join-Path $PSScriptRoot 'invoke-cloudformation-change-set.ps1') @changeSetArguments
 $exportArguments = @{ StackName=$StackName; Region=$Region }
 if ($AwsProfile) { $exportArguments.AwsProfile=$AwsProfile }
 if ($OutputFile) { $exportArguments.OutputFile=$OutputFile }

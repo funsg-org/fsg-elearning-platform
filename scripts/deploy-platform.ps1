@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
+    [switch]$ApproveChangeSets,
     [switch]$AllowDirty,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
@@ -144,6 +145,7 @@ if (-not $Execute) {
 if (-not (Test-Path -LiteralPath $ParametersFile -PathType Leaf)) {
     throw "Falta el archivo local de parámetros: $ParametersFile. Copie infrastructure/parameters.example.json y complete CostCenter."
 }
+if (-not $ApproveChangeSets) { throw 'La ejecución requiere -ApproveChangeSets para autorizar los cambios mostrados por CloudFormation.' }
 if (-not (Test-Path -LiteralPath $AmplifyParametersFile -PathType Leaf)) {
     throw "Falta el archivo local de parámetros Amplify: $AmplifyParametersFile."
 }
@@ -165,6 +167,7 @@ if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $preflightArguments.AwsPro
 
 $amplifyBootstrapArguments = @{
     Execute = $true
+    ApproveChangeSets = $true
     StackName = $AmplifyStackName
     ParametersFile = $AmplifyParametersFile
     ExpectedAccountId = $ExpectedAccountId
@@ -198,16 +201,8 @@ if ($identity.Account -ne $ExpectedAccountId) {
 }
 Write-Host "Cuenta AWS verificada: $($identity.Account) ($($identity.Arn))" -ForegroundColor Green
 
-$deployArguments = @(
-    'cloudformation', 'deploy',
-    '--template-file', $templateFile,
-    '--stack-name', $StackName,
-    '--region', $Region,
-    '--capabilities', 'CAPABILITY_NAMED_IAM',
-    '--no-fail-on-empty-changeset',
-    '--parameter-overrides'
-) + $parameterOverrides + $awsBaseArguments
-Invoke-CheckedCommand -Executable 'aws' -Arguments $deployArguments -FailureMessage 'Falló el despliegue de la infraestructura compartida.'
+$sharedChangeSetArguments = @{ StackName=$StackName; TemplateFile=$templateFile; ParameterOverrides=$parameterOverrides; Capabilities=@('CAPABILITY_NAMED_IAM'); ApproveExecution=$true; Region=$Region }
+& (Join-Path $PSScriptRoot 'invoke-cloudformation-change-set.ps1') @sharedChangeSetArguments
 
 $exportPlatformArguments = @{ StackName = $StackName; Region = $Region; OutputFile = $platformOutputsFile }
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $exportPlatformArguments.AwsProfile = $AwsProfile }

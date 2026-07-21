@@ -14,6 +14,7 @@ $requiredFiles = @(
     'infrastructure/amplify-parameters.example.json',
     'infrastructure/deployment-role-parameters.example.json',
     'scripts/deploy-platform.ps1',
+    'scripts/invoke-cloudformation-change-set.ps1',
     'scripts/test-deployment-readiness.ps1'
 )
 foreach ($relativePath in $requiredFiles) {

@@ -24,5 +24,5 @@ El bootstrap está automatizado con vista previa segura:
 
 ```powershell
 ./scripts/deploy-deployment-role.ps1
-./scripts/deploy-deployment-role.ps1 -Execute -AwsProfile bootstrap -ExpectedAccountId 123456789012
+./scripts/deploy-deployment-role.ps1 -Execute -ApproveChangeSets -AwsProfile bootstrap -ExpectedAccountId 123456789012
 ```

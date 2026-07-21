@@ -46,7 +46,7 @@ El comando siguiente solo valida y muestra las acciones:
 Después de autorizar Amplify GitHub App, crear el secreto, completar `amplify-parameters.json` y confirmar la cuenta destino:
 
 ```powershell
-./scripts/deploy-amplify-bootstrap.ps1 -Execute -AwsProfile epico -ExpectedAccountId 123456789012
+./scripts/deploy-amplify-bootstrap.ps1 -Execute -ApproveChangeSets -AwsProfile epico -ExpectedAccountId 123456789012
 ```
 
 El modo de ejecución comprueba la identidad AWS y la existencia del secreto antes de crear el stack. Al terminar genera `config/amplify-outputs.env`, que está ignorado por Git.
