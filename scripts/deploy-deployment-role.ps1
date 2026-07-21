@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [switch]$Execute,
     [switch]$ApproveChangeSets,
     [string]$AwsProfile,
@@ -11,9 +11,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
+& (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
 if (-not $StackName) { $StackName = "epico-deployment-role-$Environment" }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\deployment-role.yml'
-if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot "infrastructure\deployment-role-parameters.$Environment.json" }
+if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\deployment-role-parameters.json' }
 & (Join-Path $PSScriptRoot 'validate-deployment-role.ps1') -TemplateFile $templateFile -Region $Region -AwsProfile $AwsProfile
 if (-not $Execute) { Write-Warning 'Vista previa: no se creo el rol. La ejecucion requiere un principal bootstrap con permisos IAM.'; exit 0 }
 if (-not $ApproveChangeSets) { throw 'La ejecución requiere -ApproveChangeSets.' }

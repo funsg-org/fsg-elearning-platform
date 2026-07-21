@@ -11,12 +11,6 @@ config/amplify-outputs.env
 infrastructure/parameters.json
 infrastructure/amplify-parameters.json
 infrastructure/deployment-role-parameters.json
-infrastructure/parameters.qa.json
-infrastructure/parameters.production.json
-infrastructure/amplify-parameters.qa.json
-infrastructure/amplify-parameters.production.json
-infrastructure/deployment-role-parameters.qa.json
-infrastructure/deployment-role-parameters.production.json
 
 # IDE y sistema operativo
 .idea/

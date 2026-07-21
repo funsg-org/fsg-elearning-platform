@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [string]$SourceBranch,
     [switch]$Execute,
     [switch]$ApproveChangeSets,
@@ -18,17 +18,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
+& (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
 if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'qa' } else { 'main' } }
 if (-not $StackName) { $StackName = "epico-platform-$Environment" }
 if (-not $AmplifyStackName) { $AmplifyStackName = "epico-amplify-$Environment" }
 if ([string]::IsNullOrWhiteSpace($ParametersFile)) {
-    $ParametersFile = Join-Path $repositoryRoot "infrastructure\parameters.$Environment.json"
+    $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json'
 }
 if ([string]::IsNullOrWhiteSpace($AmplifyOutputsFile)) {
     $AmplifyOutputsFile = Join-Path $repositoryRoot "config\amplify-outputs.$Environment.env"
 }
 if ([string]::IsNullOrWhiteSpace($AmplifyParametersFile)) {
-    $AmplifyParametersFile = Join-Path $repositoryRoot "infrastructure\amplify-parameters.$Environment.json"
+    $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json'
 }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\shared-resources.yml'
 $platformOutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$Environment.env"

@@ -6,13 +6,13 @@ Este runbook es exclusivo de FSG. Comienza cuando el cliente ya creó el rol y l
 
 ## 2. Seleccionar el ambiente antes de operar
 
-Definir una sola variable de trabajo para cada intervención:
+Copiar `.env.example` como `.env` y seleccionar el ambiente:
 
 ```powershell
-$deploymentEnvironment = 'qa' # cambiar a production solo tras aprobación de QA
+ENVIRONMENT=qa
 ```
 
-Todos los comandos deben recibir `-Environment $deploymentEnvironment`. Los archivos reales son `parameters.<ambiente>.json`, `amplify-parameters.<ambiente>.json` y `platform-outputs.<ambiente>.env`. Nunca mantener en el proceso variables cargadas de otro ambiente; abrir una terminal nueva al cambiar de QA a producción.
+No es necesario pasar `-Environment`: todos los scripts leen `.env`. Para cambiar a producción, cerrar la terminal, cambiar únicamente `ENVIRONMENT=production` y abrir una terminal nueva. Los `parameters.json` se regeneran; los Outputs generados conservan el ambiente en su nombre para evitar mezclas.
 
 ## 3. Información que debe recibir FSG
 

@@ -4,11 +4,12 @@ param(
     [string]$AwsProfile,
     [string]$Region = 'us-east-1',
     [string]$ResourcePrefix = 'epico',
-    [ValidateSet('qa','production')][string]$Environment = 'production'
+    [ValidateSet('qa','production')][string]$Environment
 )
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if ([string]::IsNullOrWhiteSpace($OutputFile)) {
     $OutputFile = Join-Path $repositoryRoot "config\service-outputs.$Environment.env"
 }

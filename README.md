@@ -2,7 +2,7 @@
 
 ## Ambientes en una cuenta AWS
 
-La plataforma separa `qa` y `production` mediante perfiles versionados, stacks, sufijos, secretos, tags y contratos de salida independientes. Consulte [config/multi-environment.md](config/multi-environment.md) antes de preparar parámetros o desplegar. El ambiente se indica explícitamente con `-Environment qa` o `-Environment production`; QA se valida antes de promover la misma versión a producción.
+La plataforma selecciona `qa` o `production` con una única variable `ENVIRONMENT` en el archivo local `.env`. Stacks, sufijos, secretos, tags y parámetros se derivan automáticamente. Consulte [config/multi-environment.md](config/multi-environment.md).
 
 Repositorio orquestador privado de FSG para administrar, versionar y validar la solución e-learning como una unidad.
 

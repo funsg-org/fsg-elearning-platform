@@ -11,14 +11,17 @@ if (-not $resolvedOutput.StartsWith($allowedRoot + [System.IO.Path]::DirectorySe
 }
 
 $files = @(
+    '.env.example',
+    'config/naming.env',
+    'config/tags.env',
     'infrastructure/deployment-role.yml',
     'infrastructure/shared-resources.yml',
     'infrastructure/deployment-role-parameters.example.json',
     'infrastructure/parameters.example.json',
-    'infrastructure/deployment-role-parameters.qa.example.json',
-    'infrastructure/deployment-role-parameters.production.example.json',
-    'infrastructure/parameters.qa.example.json',
-    'infrastructure/parameters.production.example.json',
+    'infrastructure/amplify-parameters.example.json',
+    'scripts/load-environment.ps1',
+    'scripts/get-deployment-environment.ps1',
+    'scripts/sync-deployment-parameters.ps1',
     'scripts/deploy-deployment-role.ps1',
     'scripts/validate-deployment-role.ps1',
     'scripts/validate-infrastructure.ps1',

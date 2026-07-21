@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ExpectedAccountId,
     [Parameter(Mandatory = $true)][string]$ExpectedDeploymentRoleArn,
     [string]$AwsProfile,
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [string]$SourceBranch,
     [string]$Region = 'us-east-1',
     [string]$ParametersFile,
@@ -12,9 +12,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
+& (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
 if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'qa' } else { 'main' } }
-if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot "infrastructure\parameters.$Environment.json" }
-if (-not $AmplifyParametersFile) { $AmplifyParametersFile = Join-Path $repositoryRoot "infrastructure\amplify-parameters.$Environment.json" }
+if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json' }
+if (-not $AmplifyParametersFile) { $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json' }
 $expectedBranch = $SourceBranch
 $repositories = @(
     '.',

@@ -10,19 +10,15 @@ Las secciones marcadas **“Corresponde al proveedor de la solución”** son ej
 
 ## 2. Selección obligatoria del ambiente
 
-La cuenta puede alojar dos instalaciones aisladas: `qa` y `production`. El cliente debe ejecutar este manual una vez por ambiente, comenzando por QA.
+La cuenta puede alojar dos instalaciones aisladas: `qa` y `production`. Existe un solo archivo local `.env`.
 
 ```powershell
-# QA
-Copy-Item infrastructure/deployment-role-parameters.qa.example.json infrastructure/deployment-role-parameters.qa.json
-Copy-Item infrastructure/parameters.qa.example.json infrastructure/parameters.qa.json
-
-# Producción, únicamente después de aceptar QA
-Copy-Item infrastructure/deployment-role-parameters.production.example.json infrastructure/deployment-role-parameters.production.json
-Copy-Item infrastructure/parameters.production.example.json infrastructure/parameters.production.json
+Copy-Item .env.example .env
+# Editar .env y definir ENVIRONMENT=qa para la primera instalación.
+.\scripts\sync-deployment-parameters.ps1
 ```
 
-Use `-Environment qa` o `-Environment production` en todos los scripts. Los stacks serán `epico-*-qa` y `epico-*-production`; no se reutilizan archivos de parámetros, roles, usuarios Cognito, outputs ni secretos entre ambientes. Centros de costo propuestos: `FSG-ELRN-EPICO-QA` y `FSG-ELRN-EPICO-PROD`. La matriz completa está en `config/multi-environment.md`.
+Para producción se cambia únicamente `ENVIRONMENT=production` en `.env`, se abre una terminal nueva y se vuelven a ejecutar los scripts. Los parámetros se regeneran automáticamente. Los stacks serán `epico-*-qa` y `epico-*-production`. Centros de costo propuestos: `FSG-ELRN-EPICO-QA` y `FSG-ELRN-EPICO-PROD`.
 
 ## 3. Responsabilidades
 

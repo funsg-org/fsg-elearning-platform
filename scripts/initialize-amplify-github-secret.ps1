@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [string]$SecretId,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
@@ -9,6 +9,7 @@ param(
     [string]$CostCenter
 )
 $ErrorActionPreference = 'Stop'
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if (-not $SecretId) { $SecretId = "epico/$Environment/github/amplify-token" }
 if ($Region -ne 'us-east-1') { throw 'El secreto de Amplify debe prepararse en us-east-1.' }
 if (-not $Execute) {

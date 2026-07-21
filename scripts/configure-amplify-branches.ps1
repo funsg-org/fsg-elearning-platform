@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [switch]$Execute,
     [switch]$EnableAutoBuild,
     [switch]$StartBuild,
@@ -12,6 +12,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if (-not $StackName) { $StackName = "epico-amplify-$Environment" }
 if (-not $ClientEnvironmentFile) { $ClientEnvironmentFile = Join-Path $repositoryRoot "config\amplify-client-$Environment-env.json" }
 if (-not $AdminEnvironmentFile) { $AdminEnvironmentFile = Join-Path $repositoryRoot "config\amplify-admin-$Environment-env.json" }

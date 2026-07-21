@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [string]$SecretId,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
@@ -9,6 +9,7 @@ param(
     [string]$CostCenter
 )
 $ErrorActionPreference = 'Stop'
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if (-not $SecretId) { $SecretId = "epico/$Environment/serverless/access-key" }
 if ($Region -ne 'us-east-1') { throw 'El secreto Serverless debe crearse en us-east-1.' }
 if (-not $Execute) { Write-Host "Secreto a crear: $SecretId"; Write-Warning 'Vista previa: no se solicito la clave ni se modifico Secrets Manager.'; exit 0 }

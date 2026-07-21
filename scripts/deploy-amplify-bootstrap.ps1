@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [switch]$Execute,
     [switch]$ApproveChangeSets,
     [string]$AwsProfile,
@@ -12,9 +12,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
+& (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
 if (-not $StackName) { $StackName = "epico-amplify-$Environment" }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\amplify-hosting.yml'
-if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot "infrastructure\amplify-parameters.$Environment.json" }
+if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json' }
 if ($Region -ne 'us-east-1') { throw 'Amplify debe prepararse en us-east-1.' }
 & (Join-Path $PSScriptRoot 'validate-amplify-infrastructure.ps1') -TemplateFile $templateFile -Region $Region -AwsProfile $AwsProfile
 

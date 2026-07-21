@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [string]$ClientOutputFile,
     [string]$AdminOutputFile,
     [string]$PlatformOutputsFile,
@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if ([string]::IsNullOrWhiteSpace($ClientOutputFile)) {
     $ClientOutputFile = Join-Path $repositoryRoot "config\amplify-client-$Environment-env.json"
 }

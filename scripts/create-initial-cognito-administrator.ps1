@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)][ValidatePattern('^[^@\s]+@[^@\s]+\.[^@\s]+$')][string]$Email,
     [Parameter(Mandatory = $true)][securestring]$Password,
     [string]$Name = 'Administrador EPICO',
-    [ValidateSet('qa','production')][string]$Environment = 'production',
+    [ValidateSet('qa','production')][string]$Environment,
     [string]$OutputsFile,
     [string]$AwsProfile,
     [string]$Region = 'us-east-1',
@@ -13,6 +13,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if (-not $OutputsFile) { $OutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$Environment.env" }
 if ($Region -ne 'us-east-1') { throw 'La region obligatoria es us-east-1.' }
 if (-not (Test-Path -LiteralPath $OutputsFile -PathType Leaf)) { throw 'Falta config/platform-outputs.env; exporte primero los Outputs del stack compartido.' }

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$EnvironmentName = 'production',
+    [ValidateSet('qa','production')][string]$EnvironmentName,
     [string]$EnvironmentFile,
     [string]$OutputsFile,
     [string]$ServiceOutputsFile,
@@ -10,8 +10,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if (-not $EnvironmentName) { $EnvironmentName = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 if ([string]::IsNullOrWhiteSpace($EnvironmentFile)) {
-    $EnvironmentFile = Join-Path $repositoryRoot ".env.$EnvironmentName"
+    $EnvironmentFile = Join-Path $repositoryRoot '.env'
 }
 if ([string]::IsNullOrWhiteSpace($OutputsFile)) {
     $OutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$EnvironmentName.env"
