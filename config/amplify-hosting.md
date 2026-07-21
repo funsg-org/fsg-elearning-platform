@@ -10,6 +10,14 @@
 
 CloudFormation recibe solamente el nombre o ARN del secreto mediante una referencia dinamica. El valor nunca debe guardarse en Git, `.env`, parametros en texto plano ni Outputs.
 
+El secreto puede inicializarse sin colocar el token en el historial del shell:
+
+```powershell
+./scripts/initialize-amplify-github-secret.ps1 -Execute -AwsProfile epico -ExpectedAccountId 123456789012 -CostCenter CODIGO_REAL
+```
+
+El script pide el token de forma oculta y no sobrescribe secretos existentes.
+
 ## Orden futuro
 
 1. Validar sin crear recursos: `./scripts/validate-amplify-infrastructure.ps1`.
@@ -26,3 +34,19 @@ CloudFormation recibe solamente el nombre o ARN del secreto mediante una referen
 ```
 
 No se configura dominio personalizado; se usan los dominios predeterminados de Amplify.
+
+## Bootstrap controlado
+
+El comando siguiente solo valida y muestra las acciones:
+
+```powershell
+./scripts/deploy-amplify-bootstrap.ps1
+```
+
+Después de autorizar Amplify GitHub App, crear el secreto, completar `amplify-parameters.json` y confirmar la cuenta destino:
+
+```powershell
+./scripts/deploy-amplify-bootstrap.ps1 -Execute -AwsProfile epico -ExpectedAccountId 123456789012
+```
+
+El modo de ejecución comprueba la identidad AWS y la existencia del secreto antes de crear el stack. Al terminar genera `config/amplify-outputs.env`, que está ignorado por Git.

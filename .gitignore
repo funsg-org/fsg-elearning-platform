@@ -5,6 +5,7 @@
 config/platform-outputs.env
 config/service-outputs.env
 config/amplify-*-env.json
+config/amplify-outputs.env
 infrastructure/parameters.json
 infrastructure/amplify-parameters.json
 
