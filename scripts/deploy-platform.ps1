@@ -149,6 +149,15 @@ if (-not (Test-Path -LiteralPath $AmplifyParametersFile -PathType Leaf)) {
 if ($ExpectedAccountId -notmatch '^\d{12}$') {
     throw 'Debe indicar -ExpectedAccountId con los 12 dígitos de la cuenta destino.'
 }
+$preflightArguments = @{
+    ExpectedAccountId=$ExpectedAccountId
+    Region=$Region
+    ParametersFile=$ParametersFile
+    AmplifyParametersFile=$AmplifyParametersFile
+}
+if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $preflightArguments.AwsProfile=$AwsProfile }
+& (Join-Path $PSScriptRoot 'test-deployment-readiness.ps1') @preflightArguments
+
 $amplifyBootstrapArguments = @{
     Execute = $true
     StackName = $AmplifyStackName

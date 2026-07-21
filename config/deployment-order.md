@@ -27,6 +27,16 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
   -ExpectedAccountId 123456789012
 ```
 
+Antes de cualquier escritura, `-Execute` ejecuta automáticamente `scripts/test-deployment-readiness.ps1`. El preflight puede ejecutarse también de forma independiente para diagnosticar la estación y las credenciales:
+
+```powershell
+.\scripts\test-deployment-readiness.ps1 -AwsProfile epico -ExpectedAccountId 123456789012
+```
+
+La opción `-SkipRemoteChecks` omite únicamente `git ls-remote`; no omite identidad AWS, secreto, parámetros ni plantillas.
+
+El preflight verifica los permisos de lectura que puede comprobar sin mutaciones (`STS`, consulta del secreto y validación de CloudFormation). Los permisos de creación específicos de cada recurso se evalúan finalmente cuando CloudFormation crea el change set; comprobarlos por anticipado requeriría simulación IAM adicional o una operación AWS.
+
 ## Límites deliberados
 
 - No crea la cuenta AWS.
