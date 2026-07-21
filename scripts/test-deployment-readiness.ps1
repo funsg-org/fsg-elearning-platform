@@ -49,8 +49,12 @@ $nodeVersionText = (& node --version).Trim().TrimStart('v')
 $nodeVersion = [version]$nodeVersionText
 if ($nodeVersion -lt [version]'20.19.0') { throw "Node.js $nodeVersion no cumple el minimo 20.19.0 requerido por los frontends." }
 Add-Check "Node.js compatible: $nodeVersion"
+$previousErrorPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $serverlessText = (& npx serverless --version 2>&1 | Out-String)
-if ($LASTEXITCODE -ne 0 -or $serverlessText -notmatch 'Framework\s+(?<major>\d+)\.') { throw 'No se pudo resolver una version utilizable de Serverless Framework.' }
+$serverlessExitCode = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorPreference
+if ($serverlessExitCode -ne 0 -or $serverlessText -notmatch 'Framework\s+(?<major>\d+)\.') { throw 'No se pudo resolver una version utilizable de Serverless Framework.' }
 Add-Check "Serverless Framework disponible: major $($Matches.major)"
 
 foreach ($relative in $repositories) {
