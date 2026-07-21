@@ -17,8 +17,9 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
 1. Copiar los dos archivos de parámetros de ejemplo como `parameters.json` y `amplify-parameters.json`.
 2. Definir el mismo `CostCenterTag` definitivo en ambos archivos.
 3. Autorizar Amplify GitHub App y crear el secreto indicado por `GitHubAccessTokenSecretId`.
-4. Configurar credenciales AWS mediante perfil u OIDC.
-5. Ejecutar:
+4. Crear el secreto operativo de Serverless documentado en `config/secrets.md`.
+5. Configurar credenciales AWS mediante perfil u OIDC.
+6. Ejecutar:
 
 ```powershell
 .\scripts\deploy-platform.ps1 `

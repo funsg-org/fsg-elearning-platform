@@ -26,6 +26,7 @@ $repositories = @(
 )
 $services = $repositories | Where-Object { $_ -like 'services\*' }
 $checks = [System.Collections.Generic.List[string]]::new()
+. (Join-Path $PSScriptRoot 'load-environment.ps1') -Quiet | Out-Null
 function Add-Check([string]$Message) { $checks.Add($Message) }
 function Assert-Command([string]$Name) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) { throw "No se encontro la herramienta '$Name' en PATH." }
@@ -110,6 +111,9 @@ if ($LASTEXITCODE -ne 0) { throw 'No se pudo consultar la identidad AWS.' }
 $identity = ($identityRaw -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta AWS activa $($identity.Account); se esperaba $ExpectedAccountId." }
 Add-Check "Cuenta AWS verificada: $($identity.Account)"
+& (Join-Path $PSScriptRoot 'import-serverless-access-key.ps1') -SecretId $env:SERVERLESS_ACCESS_KEY_SECRET_ID -AwsProfile $AwsProfile -Region $Region
+if (-not $env:SERVERLESS_ACCESS_KEY) { throw 'SERVERLESS_ACCESS_KEY no quedo disponible en memoria.' }
+Add-Check 'SERVERLESS_ACCESS_KEY cargada desde Secrets Manager (valor no mostrado)'
 & aws secretsmanager describe-secret --secret-id $amplify.GitHubAccessTokenSecretId @awsBase | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'El secreto GitHub de Amplify no existe o no es accesible.' }
 Add-Check 'Secreto GitHub de Amplify accesible (valor no consultado)'

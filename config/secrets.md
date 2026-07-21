@@ -1,5 +1,15 @@
 # Contrato de secretos
 
+## Serverless Framework v4
+
+La autenticación no interactiva usa `SERVERLESS_ACCESS_KEY`, almacenada como `{ "accessKey": "..." }` en `epico/production/serverless/access-key`. El identificador no sensible vive en `config/naming.env`.
+
+```powershell
+./scripts/initialize-serverless-access-key-secret.ps1 -Execute -AwsProfile epico -ExpectedAccountId 123456789012 -CostCenter CODIGO_REAL
+```
+
+El preflight recupera el valor directamente a la variable del proceso antes de cualquier despliegue. No se escribe en `.env`, logs ni Git.
+
 Los secretos de la plataforma no se almacenan en Git, archivos `.env`, variables `VITE_*`, outputs de CloudFormation ni parámetros SSM de tipo `String`.
 
 ## Cognito del microservicio de autenticación
