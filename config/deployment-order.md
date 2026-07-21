@@ -1,5 +1,7 @@
 # Orquestación de despliegue
 
+> Paso previo nuevo: crear primero el stack `amplify-hosting.yml` con auto-build desactivado. Sus URLs permiten reemplazar el CORS provisional antes de desplegar la infraestructura compartida. La activación de builds ocurre solamente al final y de forma explícita; consulte `config/amplify-hosting.md`.
+
 El script `scripts/deploy-platform.ps1` implementa el orden reproducible de instalación para una cuenta AWS ya creada.
 
 ## Vista previa segura

@@ -6,6 +6,7 @@ config/platform-outputs.env
 config/service-outputs.env
 config/amplify-*-env.json
 infrastructure/parameters.json
+infrastructure/amplify-parameters.json
 
 # IDE y sistema operativo
 .idea/

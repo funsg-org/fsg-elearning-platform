@@ -1,5 +1,7 @@
 # Infraestructura compartida
 
+La infraestructura de Amplify se mantiene separada en `amplify-hosting.yml`. Las aplicaciones se conectan exclusivamente a la rama de preparación y nacen con auto-build desactivado. Consulte `config/amplify-hosting.md` antes de activarlas.
+
 `shared-resources.yml` define Cognito, Secrets Manager, el bucket privado S3 y CloudFront para una cuenta AWS ya creada.
 
 La plantilla no configura dominio personalizado. CloudFront utiliza su certificado y dominio predeterminados. S3 bloquea acceso público y permite lectura exclusivamente desde la distribución mediante Origin Access Control.

@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Amplify Hosting para los frontends publico y administrativo de EPICO.
+
+Parameters:
+  ResourcePrefix:
+    Type: String
+    Default: epico
+  ResourceSuffix:
+    Type: String
+    Default: production
+  DeploymentBranch:
+    Type: String
+    Default: feature/epico-deployment-readiness
+  DeploymentBranchDomainPrefix:
+    Type: String
+    Default: feature-epico-deployment-readiness
+    AllowedPattern: '^[a-z0-9][a-z0-9-]*$'
+  ClientRepository:
+    Type: String
+    Default: https://github.com/funsg-org/aprendamosgye_react
+  AdminRepository:
+    Type: String
+    Default: https://github.com/funsg-org/ms-aprendamosgye-admin-web
+  GitHubAccessTokenSecretId:
+    Type: String
+    Description: Nombre o ARN del secreto JSON de Secrets Manager que contiene la clave token.
+  SolutionTag: { Type: String, Default: E-Learning }
+  ProjectTag: { Type: String, Default: FSG-Elearning }
+  ClientTag: { Type: String, Default: EPICO }
+  EnvironmentTag: { Type: String, Default: production }
+  OwnerTag: { Type: String, Default: FSG }
+  ManagedByTag: { Type: String, Default: IaC }
+  CostCenterTag: { Type: String }
+
+Resources:
+  ClientApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub '${ResourcePrefix}-client-${ResourceSuffix}'
+      Repository: !Ref ClientRepository
+      AccessToken: !Sub '{{resolve:secretsmanager:${GitHubAccessTokenSecretId}:SecretString:token}}'
+      EnableBranchAutoDeletion: false
+      Platform: WEB
+      BuildSpec: |
+        version: 1
+        frontend:
+          phases:
+            preBuild:
+              commands: [npm ci]
+            build:
+              commands: [npm run build]
+          artifacts:
+            baseDirectory: dist
+            files: ['**/*']
+          cache:
+            paths: [node_modules/**/*]
+      Tags:
+        - { Key: Solution, Value: !Ref SolutionTag }
+        - { Key: Project, Value: !Ref ProjectTag }
+        - { Key: Client, Value: !Ref ClientTag }
+        - { Key: Environment, Value: !Ref EnvironmentTag }
+        - { Key: Owner, Value: !Ref OwnerTag }
+        - { Key: ManagedBy, Value: !Ref ManagedByTag }
+        - { Key: CostCenter, Value: !Ref CostCenterTag }
+
+  ClientBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt ClientApp.AppId
+      BranchName: !Ref DeploymentBranch
+      Description: Rama de preparacion sin compilacion automatica.
+      EnableAutoBuild: false
+      EnablePullRequestPreview: false
+      Framework: React
+      Stage: DEVELOPMENT
+      Tags:
+        - { Key: Solution, Value: !Ref SolutionTag }
+        - { Key: Project, Value: !Ref ProjectTag }
+        - { Key: Client, Value: !Ref ClientTag }
+        - { Key: Environment, Value: !Ref EnvironmentTag }
+        - { Key: Owner, Value: !Ref OwnerTag }
+        - { Key: ManagedBy, Value: !Ref ManagedByTag }
+        - { Key: CostCenter, Value: !Ref CostCenterTag }
+
+  AdminApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub '${ResourcePrefix}-admin-${ResourceSuffix}'
+      Repository: !Ref AdminRepository
+      AccessToken: !Sub '{{resolve:secretsmanager:${GitHubAccessTokenSecretId}:SecretString:token}}'
+      EnableBranchAutoDeletion: false
+      Platform: WEB
+      BuildSpec: |
+        version: 1
+        applications:
+          - appRoot: Aprendamos_Admin
+            frontend:
+              phases:
+                preBuild:
+                  commands: [npm ci]
+                build:
+                  commands: [npm run build]
+              artifacts:
+                baseDirectory: dist
+                files: ['**/*']
+              cache:
+                paths: [node_modules/**/*]
+      Tags:
+        - { Key: Solution, Value: !Ref SolutionTag }
+        - { Key: Project, Value: !Ref ProjectTag }
+        - { Key: Client, Value: !Ref ClientTag }
+        - { Key: Environment, Value: !Ref EnvironmentTag }
+        - { Key: Owner, Value: !Ref OwnerTag }
+        - { Key: ManagedBy, Value: !Ref ManagedByTag }
+        - { Key: CostCenter, Value: !Ref CostCenterTag }
+
+  AdminBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AdminApp.AppId
+      BranchName: !Ref DeploymentBranch
+      Description: Rama de preparacion sin compilacion automatica.
+      EnableAutoBuild: false
+      EnablePullRequestPreview: false
+      Framework: React
+      Stage: DEVELOPMENT
+      Tags:
+        - { Key: Solution, Value: !Ref SolutionTag }
+        - { Key: Project, Value: !Ref ProjectTag }
+        - { Key: Client, Value: !Ref ClientTag }
+        - { Key: Environment, Value: !Ref EnvironmentTag }
+        - { Key: Owner, Value: !Ref OwnerTag }
+        - { Key: ManagedBy, Value: !Ref ManagedByTag }
+        - { Key: CostCenter, Value: !Ref CostCenterTag }
+
+Outputs:
+  ClientAmplifyAppId:
+    Value: !GetAtt ClientApp.AppId
+  ClientAmplifyBranch:
+    Value: !Ref DeploymentBranch
+  ClientAmplifyUrl:
+    Value: !Sub 'https://${DeploymentBranchDomainPrefix}.${ClientApp.DefaultDomain}'
+  AdminAmplifyAppId:
+    Value: !GetAtt AdminApp.AppId
+  AdminAmplifyBranch:
+    Value: !Ref DeploymentBranch
+  AdminAmplifyUrl:
+    Value: !Sub 'https://${DeploymentBranchDomainPrefix}.${AdminApp.DefaultDomain}'
