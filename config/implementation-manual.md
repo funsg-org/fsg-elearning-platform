@@ -1,6 +1,22 @@
-# Manual de implementación limpia de FSG E-learning para EPICO
+# Manual interno de despliegue para el proveedor/desarrollador FSG
 
-Este procedimiento instala la solución en una cuenta AWS ya creada. Está diseñado para ser ejecutado por FSG. El cliente no necesita acceso al código ni instalar herramientas si FSG despliega desde una estación o runner administrado por FSG.
+Este runbook instala FSG E-learning para EPICO en una cuenta AWS ya creada. Es documentación interna de FSG y debe ser ejecutado exclusivamente por el desarrollador/proveedor responsable. No es un manual para el cliente.
+
+El código fuente, repositorios, submódulos, scripts, archivos locales de parámetros, credenciales de GitHub, credenciales de Serverless y manifiestos técnicos internos permanecen bajo custodia de FSG. El cliente recibe la solución desplegada en su cuenta AWS y la documentación de entrega descrita en `config/client-deployment-handover.md`, sin copia del código fuente.
+
+### División obligatoria de responsabilidades
+
+| Actividad | FSG/proveedor | Cliente |
+| --- | --- | --- |
+| Custodiar y modificar el código fuente | Responsable exclusivo | Sin acceso |
+| Preparar estación, Git, Node, AWS CLI y Serverless | Ejecuta | No instala herramientas |
+| Entregar el Account ID y autorizar acceso temporal | Solicita y verifica | Proporciona/autoriza |
+| Crear parámetros, roles, secretos y stacks | Ejecuta | No ejecuta scripts |
+| Autorizar el uso de la cuenta y políticas de seguridad | Informa impacto | Aprueba |
+| Proporcionar dominio/DNS, si aplica | Configura técnicamente | Acredita propiedad y autoriza cambios |
+| Crear el administrador inicial | Ejecuta | Designa correo y recibe acceso |
+| Probar y documentar la instalación | Ejecuta | Realiza aceptación funcional |
+| Recibir inventario, URLs, costos, soporte y operación | Entrega | Recibe |
 
 ## 1. Datos y responsables
 
@@ -14,9 +30,9 @@ Registrar antes de comenzar:
 
 El centro de costo representa empresa, producto, cliente y ambiente. Debe repetirse en todos los archivos de parámetros. Si Finanzas exige otro catálogo, se reemplaza antes del despliegue; nunca se acepta `PENDING`.
 
-## 2. Elegir la estación de despliegue
+## 2. Preparar la estación privada de despliegue FSG
 
-Puede ser una estación FSG, un runner CI/CD FSG o, si el cliente lo exige, un equipo dentro de su red. AWS CLI solo se necesita allí; no se instala en equipos de usuarios finales ni administradores funcionales.
+Utilizar una estación FSG o un runner CI/CD administrado por FSG. Si el cliente exige origen de red controlado, se usará una estación FSG autorizada mediante VPN, bastión o mecanismo acordado; no se copiará el repositorio a un equipo del cliente. AWS CLI, Git, Node.js y PowerShell solo se instalan en el entorno de FSG.
 
 ## 3. Instalar y comprobar herramientas
 
@@ -70,12 +86,12 @@ arn:aws:iam::123456789012:user/bootstrap-admin
 
 Hay dos niveles:
 
-- Identidad bootstrap: administrada por el cliente; crea una sola vez el rol limitado.
+- Identidad bootstrap: autorizada temporalmente por el cliente y utilizada por FSG una sola vez para crear el rol limitado.
 - `epico-deployment-production`: rol con permisos para desplegar recursos EPICO en `us-east-1`.
 
 No desplegar permanentemente como root ni con `AdministratorAccess`.
 
-## 6. Clonar la versión aprobada
+## 6. Clonar la versión aprobada en la estación privada FSG
 
 ```powershell
 git clone --recurse-submodules https://github.com/funsg-org/fsg-elearning-platform.git
@@ -88,6 +104,8 @@ git submodule status
 ```
 
 Todos los repositorios deben quedar en los commits registrados y sin cambios locales.
+
+No mostrar, transferir ni clonar estos repositorios en equipos o cuentas Git del cliente.
 
 ## 7. Crear archivos locales de parámetros
 
@@ -266,9 +284,11 @@ La primera instalación funciona con dominios Amplify y CloudFront. Para agregar
 
 La plantilla actual no automatiza dominio porque aún no existe. Se incorporará mediante un cambio IaC revisado, no durante el primer despliegue.
 
-## 19. Validación y entrega
+## 19. Preparar la entrega al cliente sin código fuente
 
-Registrar Account ID, región, stacks, URLs, pruebas, correo del administrador, CostCenter, commits y ubicación protegida de recuperación. Nunca registrar contraseñas. Activar las etiquetas de asignación de costos definidas por usuario en Billing si la cuenta todavía no lo hizo y verificar Cost Explorer cuando AWS procese los datos.
+Completar `config/client-deployment-handover.md` con Account ID, región, inventario de stacks y servicios, URLs, pruebas, correo del administrador, CostCenter, operación, costos y soporte. Nunca incluir contraseñas, repositorios, commits internos, scripts, archivos de parámetros, manifiestos de recuperación internos o secretos.
+
+Los commits y evidencias técnicas completas se registran únicamente en el expediente interno de FSG. Activar las etiquetas de asignación de costos definidas por usuario en Billing si la cuenta todavía no lo hizo y verificar Cost Explorer cuando AWS procese los datos.
 
 ## 20. Cierre de seguridad
 

@@ -7,6 +7,8 @@ $requiredFiles = @(
     '.gitmodules',
     'config/naming.env',
     'config/tags.env',
+    'config/implementation-manual.md',
+    'config/client-deployment-handover.md',
     'infrastructure/shared-resources.yml',
     'infrastructure/amplify-hosting.yml',
     'infrastructure/deployment-role.yml',
