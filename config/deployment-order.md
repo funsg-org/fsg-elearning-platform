@@ -15,7 +15,7 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
 ## Ejecución futura
 
 1. Copiar `infrastructure/parameters.example.json` como `infrastructure/parameters.json`.
-2. Definir `CostCenterTag` y reemplazar el CORS provisional.
+2. Definir `CostCenterTag`; el CORS se obtiene automáticamente de `config/amplify-outputs.env`.
 3. Configurar credenciales AWS mediante perfil u OIDC.
 4. Ejecutar:
 
@@ -35,4 +35,4 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
 - Se detiene ante el primer error; no continúa con dependencias incompletas.
 - Exige la rama `feature/epico-deployment-readiness` y un repositorio limpio.
 - Compara la identidad AWS activa con `-ExpectedAccountId` antes de crear recursos.
-- Rechaza `CostCenterTag=PENDING` y `MediaCorsAllowedOrigins=*`.
+- Rechaza `CostCenterTag=PENDING` y URLs que no sean orígenes HTTPS predeterminados de Amplify.

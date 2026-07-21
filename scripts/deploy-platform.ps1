@@ -6,13 +6,17 @@ param(
     [string]$ExpectedAccountId,
     [string]$Region = 'us-east-1',
     [string]$StackName = 'epico-platform-production',
-    [string]$ParametersFile
+    [string]$ParametersFile,
+    [string]$AmplifyOutputsFile
 )
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if ([string]::IsNullOrWhiteSpace($ParametersFile)) {
     $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json'
+}
+if ([string]::IsNullOrWhiteSpace($AmplifyOutputsFile)) {
+    $AmplifyOutputsFile = Join-Path $repositoryRoot 'config\amplify-outputs.env'
 }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\shared-resources.yml'
 $platformOutputsFile = Join-Path $repositoryRoot 'config\platform-outputs.env'
@@ -48,18 +52,19 @@ function Invoke-CheckedCommand {
 }
 
 function Get-CloudFormationParameters {
-    param([string]$Path)
+    param([string]$Path, [string]$CorsAllowedOrigins)
     $parameters = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
     $arguments = [System.Collections.Generic.List[string]]::new()
     foreach ($parameter in $parameters) {
         if ($parameter.ParameterKey -eq 'CostCenterTag' -and $parameter.ParameterValue -eq 'PENDING') {
             throw 'CostCenterTag continúa en PENDING. Defínalo antes de desplegar.'
         }
-        if ($parameter.ParameterKey -eq 'MediaCorsAllowedOrigins' -and $parameter.ParameterValue -eq '*') {
-            throw 'MediaCorsAllowedOrigins no puede permanecer en * durante el despliegue.'
+        if ($parameter.ParameterKey -eq 'MediaCorsAllowedOrigins') {
+            continue
         }
         $arguments.Add("$($parameter.ParameterKey)=$($parameter.ParameterValue)")
     }
+    $arguments.Add("MediaCorsAllowedOrigins=$CorsAllowedOrigins")
     return $arguments.ToArray()
 }
 
@@ -108,10 +113,11 @@ foreach ($service in $services) {
 if (-not $Execute) {
     Write-Host ''
     Write-Host 'Orden que se ejecutará:' -ForegroundColor Cyan
-    Write-Host '1. Desplegar CloudFormation compartido.'
-    Write-Host '2. Exportar Cognito, Secrets Manager, S3 y CloudFront.'
-    Write-Host '3. Validar el contrato de plataforma.'
-    $step = 4
+    Write-Host '1. Leer y validar las URLs de los dos frontends desde config/amplify-outputs.env.'
+    Write-Host '2. Inyectar ambos orígenes exactos en el CORS de S3 y desplegar CloudFormation compartido.'
+    Write-Host '3. Exportar Cognito, Secrets Manager, S3 y CloudFront.'
+    Write-Host '4. Validar el contrato de plataforma.'
+    $step = 5
     foreach ($service in $services) {
         Write-Host "$step. Desplegar $service."
         $step++
@@ -125,12 +131,17 @@ if (-not $Execute) {
 }
 
 if (-not (Test-Path -LiteralPath $ParametersFile -PathType Leaf)) {
-    throw "Falta el archivo local de parámetros: $ParametersFile. Copie infrastructure/parameters.example.json y complete CostCenter/CORS."
+    throw "Falta el archivo local de parámetros: $ParametersFile. Copie infrastructure/parameters.example.json y complete CostCenter."
 }
 if ($ExpectedAccountId -notmatch '^\d{12}$') {
     throw 'Debe indicar -ExpectedAccountId con los 12 dígitos de la cuenta destino.'
 }
-$parameterOverrides = Get-CloudFormationParameters -Path $ParametersFile
+$corsAllowedOrigins = & (Join-Path $PSScriptRoot 'get-amplify-cors-origins.ps1') -AmplifyOutputsFile $AmplifyOutputsFile
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($corsAllowedOrigins)) {
+    throw 'No se pudieron resolver los orígenes CORS desde Amplify.'
+}
+Write-Host "Orígenes CORS validados: $corsAllowedOrigins" -ForegroundColor Green
+$parameterOverrides = Get-CloudFormationParameters -Path $ParametersFile -CorsAllowedOrigins $corsAllowedOrigins
 
 $awsBaseArguments = @()
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) {

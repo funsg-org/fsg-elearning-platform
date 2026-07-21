@@ -7,6 +7,5 @@
   { "ParameterKey": "ClientTag", "ParameterValue": "EPICO" },
   { "ParameterKey": "OwnerTag", "ParameterValue": "FSG" },
   { "ParameterKey": "ManagedByTag", "ParameterValue": "IaC" },
-  { "ParameterKey": "CostCenterTag", "ParameterValue": "PENDING" },
-  { "ParameterKey": "MediaCorsAllowedOrigins", "ParameterValue": "*" }
+  { "ParameterKey": "CostCenterTag", "ParameterValue": "PENDING" }
 ]

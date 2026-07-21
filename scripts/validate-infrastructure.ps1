@@ -34,6 +34,9 @@ foreach ($output in $requiredOutputs) {
 if ($templateText -match '(?im)(AKIA[0-9A-Z]{16}|AWS_SECRET_ACCESS_KEY\s*:|^\s+ClientSecret\s*:\s*[^!])') {
     throw 'La plantilla contiene un patrón de credencial o Client Secret no permitido.'
 }
+if ($templateText -match '(?ms)^  MediaCorsAllowedOrigins:\s*.*?^    Default:\s*[''"]?\*[''"]?\s*$') {
+    throw 'MediaCorsAllowedOrigins no puede tener un comodín como valor predeterminado.'
+}
 
 $arguments = @(
     'cloudformation', 'validate-template',

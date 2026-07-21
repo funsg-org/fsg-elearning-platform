@@ -25,7 +25,7 @@ La validación local usa AWS CloudFormation `validate-template`; requiere AWS CL
 ## Parámetros pendientes antes del despliegue
 
 - Reemplazar `CostCenterTag=PENDING`.
-- Sustituir `MediaCorsAllowedOrigins=*` por las URLs definitivas de Amplify cuando existan.
+- Generar `config/amplify-outputs.env`; el orquestador inyecta automáticamente sus dos URLs como orígenes CORS exactos.
 - Confirmar política de contraseñas y recuperación de Cognito.
 
 Después del despliegue, ejecutar `scripts/export-cloudformation-outputs.ps1` para generar el contrato local consumido por Serverless.

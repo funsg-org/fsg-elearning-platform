@@ -34,8 +34,7 @@ Parameters:
     Default: PENDING
   MediaCorsAllowedOrigins:
     Type: CommaDelimitedList
-    Default: '*'
-    Description: Origins allowed to use presigned S3 requests. Replace the wildcard when Amplify URLs are final.
+    Description: Exact Amplify origins allowed to use presigned S3 requests. No wildcard is accepted by the orchestrator.
 
 Resources:
   UserPool:
