@@ -88,16 +88,16 @@ $PSVersionTable.PSVersion
 Se recomienda IAM Identity Center/SSO:
 
 ```powershell
-aws configure sso --profile epico-admin
-aws sso login --profile epico-admin
-aws sts get-caller-identity --profile epico-admin
+aws configure sso --profile epico-bootstrap
+aws sso login --profile epico-bootstrap
+aws sts get-caller-identity --profile epico-bootstrap
 ```
 
 Si la organización todavía utiliza Access Keys:
 
 ```powershell
-aws configure --profile epico-admin
-aws sts get-caller-identity --profile epico-admin
+aws configure --profile epico-bootstrap
+aws sts get-caller-identity --profile epico-bootstrap
 ```
 
 La respuesta debe mostrar la cuenta destino. Nunca utilizar la cuenta root para ejecutar el despliegue.
@@ -136,18 +136,23 @@ En `deployment-role-parameters.json`, colocar como `TrustedPrincipalArn` el ARN 
 Vista previa:
 
 ```powershell
+$accountId = aws sts get-caller-identity `
+  --query Account --output text --profile epico-bootstrap
+
 .\scripts\deploy-deployment-role.ps1 `
-  -AwsProfile epico-admin `
-  -ExpectedAccountId 123456789012
+  -AwsProfile epico-bootstrap `
+  -ExpectedAccountId $accountId
 ```
+
+No copiar literalmente `123456789012`: en todos los ejemplos representa el Account ID real de 12 dígitos. El comando anterior lo consulta automáticamente.
 
 Después de revisar el Change Set:
 
 ```powershell
 .\scripts\deploy-deployment-role.ps1 `
   -Execute -ApproveChangeSets `
-  -AwsProfile epico-admin `
-  -ExpectedAccountId 123456789012
+  -AwsProfile epico-bootstrap `
+  -ExpectedAccountId $accountId
 ```
 
 Registrar el output:
@@ -183,7 +188,7 @@ https://rama.id-publico.amplifyapp.com,https://rama.id-admin.amplifyapp.com
 
 ```powershell
 .\scripts\validate-infrastructure.ps1 `
-  -AwsProfile epico-admin `
+  -AwsProfile epico-bootstrap `
   -Region us-east-1
 ```
 
@@ -207,7 +212,7 @@ $changeSetName = .\scripts\invoke-cloudformation-change-set.ps1 `
   -TemplateFile infrastructure/shared-resources.yml `
   -ParameterOverrides $platformParameters `
   -Capabilities CAPABILITY_NAMED_IAM `
-  -AwsProfile epico-admin `
+  -AwsProfile epico-bootstrap `
   -Region us-east-1
 ```
 
@@ -225,12 +230,12 @@ Revisar que no existan eliminaciones o reemplazos inesperados. Ejecutar el Chang
 aws cloudformation execute-change-set `
   --stack-name epico-platform-production `
   --change-set-name $changeSetName `
-  --profile epico-admin `
+  --profile epico-bootstrap `
   --region us-east-1
 
 aws cloudformation wait stack-create-complete `
   --stack-name epico-platform-production `
-  --profile epico-admin `
+  --profile epico-bootstrap `
   --region us-east-1
 ```
 
