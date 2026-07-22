@@ -207,9 +207,10 @@ La validación no crea recursos.
 Convertir el JSON local a parámetros del script:
 
 ```powershell
-$platformParameters = Get-Content infrastructure/parameters.json -Raw |
-  ConvertFrom-Json |
-  ForEach-Object { "$($_.ParameterKey)=$($_.ParameterValue)" }
+$parameterData = Get-Content infrastructure/parameters.json -Raw | ConvertFrom-Json
+$platformParameters = foreach ($parameter in $parameterData) {
+  "$($parameter.ParameterKey)=$($parameter.ParameterValue)"
+}
 ```
 
 Crear el Change Set sin ejecutarlo:

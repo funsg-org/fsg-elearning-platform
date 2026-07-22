@@ -26,20 +26,27 @@ elseif (($stackLookup -join [Environment]::NewLine) -match 'ValidationError|does
 else { throw "No se pudo determinar el estado del stack '$StackName'." }
 $changeSetName = 'review-' + $StackName + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8)
 $arguments = @('cloudformation','create-change-set','--stack-name',$StackName,'--change-set-name',$changeSetName,'--change-set-type',$changeSetType,'--template-body',"file://$TemplateFile")
+$parameterFile = $null
 if ($ParameterOverrides.Count) {
-    $arguments += '--parameters'
-    foreach ($override in $ParameterOverrides) {
+    $parameterObjects = foreach ($override in $ParameterOverrides) {
         $separator=$override.IndexOf('=')
         if ($separator -lt 1) { throw "Parametro invalido: $override" }
         $key=$override.Substring(0,$separator)
         $value=$override.Substring($separator+1)
-        $arguments += "ParameterKey=$key,ParameterValue=$value"
+        [ordered]@{ ParameterKey=$key; ParameterValue=$value }
     }
+    $parameterFile = Join-Path ([System.IO.Path]::GetTempPath()) ("epico-cfn-parameters-" + [guid]::NewGuid().ToString('N') + '.json')
+    [System.IO.File]::WriteAllText($parameterFile,($parameterObjects | ConvertTo-Json -Depth 3),[System.Text.UTF8Encoding]::new($false))
+    $arguments += @('--parameters',"file://$parameterFile")
 }
 if ($Capabilities.Count) { $arguments += @('--capabilities') + $Capabilities }
 $arguments += $awsBase
-& aws @arguments | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el change set '$changeSetName'." }
+try {
+    & aws @arguments | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el change set '$changeSetName'." }
+} finally {
+    if ($parameterFile) { Remove-Item -LiteralPath $parameterFile -Force -ErrorAction SilentlyContinue }
+}
 
 $previousPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
