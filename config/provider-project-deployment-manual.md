@@ -101,26 +101,69 @@ El resultado debe contener `assumed-role/epico-deployment-<ambiente>/`. Si muest
 
 Esta fase no necesita Cognito, S3, CloudFront ni URLs de microservicios.
 
-1. Crear en Secrets Manager el token GitHub de Amplify mediante entrada segura:
+### 6.1 Instalar la GitHub App oficial de Amplify
+
+Este paso se realiza una sola vez para la organización y región:
+
+1. Iniciar sesión en GitHub con una cuenta que tenga acceso administrativo a `funsg-org`.
+2. Abrir `https://github.com/apps/aws-amplify-us-east-1/installations/new`.
+3. En **Where do you want to install AWS Amplify (us-east-1)?**, elegir `funsg-org`.
+4. Seleccionar **Only select repositories**.
+5. Autorizar únicamente:
+   - `funsg-org/aprendamosgye_react`
+   - `funsg-org/ms-aprendamosgye-admin-web`
+6. Elegir **Install**.
+
+Si GitHub muestra **Request** en lugar de **Install**, un propietario de `funsg-org` debe aprobar la instalación y el acceso a esos repositorios antes de continuar.
+
+### 6.2 Generar el Personal Access Token
+
+La creación mediante CloudFormation requiere además un Personal Access Token:
+
+1. En GitHub abrir la foto de perfil → **Settings**.
+2. Al final del menú izquierdo elegir **Developer settings**.
+3. Elegir **Personal access tokens** → **Tokens (classic)**.
+4. Elegir **Generate new token** → **Generate new token (classic)**.
+5. Confirmar la contraseña o segundo factor si GitHub lo solicita.
+6. Completar:
+   - **Note**: `AWS Amplify EPICO QA bootstrap`.
+   - **Expiration**: una vigencia aprobada para la instalación; para la prueba puede utilizarse 30 días.
+   - **Select scopes**: marcar solamente `admin:repo_hook`.
+7. Elegir **Generate token**.
+8. Copiar el token inmediatamente; GitHub no lo vuelve a mostrar.
+
+No guardar el token en `.env`, JSON, código, historial de comandos, correo o chat. Si la organización exige autorización SSO para tokens, elegir **Configure SSO** junto al token y autorizar `funsg-org`.
+
+### 6.3 Guardar el token en Secrets Manager
+
+Si el script ya está esperando el token, pegarlo directamente en el prompt seguro y presionar Enter. PowerShell no muestra los caracteres. Si se canceló con `Ctrl+C`, volver a ejecutar:
 
 ```powershell
+$accountId = aws sts get-caller-identity --query Account --output text
+
 .\scripts\initialize-amplify-github-secret.ps1 `
   -Execute `
-  -ExpectedAccountId 123456789012 `
+  -ExpectedAccountId $accountId `
   -CostCenter FSG-ELRN-EPICO-QA
 ```
 
-2. Crear las dos aplicaciones y sus ramas con auto-build desactivado:
+El script almacena el token en `epico/qa/github/amplify-token` sin imprimirlo. No enviarlo al cliente ni a FSG por un canal no aprobado.
+
+### 6.4 Crear Amplify sin publicar
+
+Crear las dos aplicaciones y sus ramas con auto-build desactivado:
 
 ```powershell
 .\scripts\deploy-amplify-bootstrap.ps1 `
   -Execute -ApproveChangeSets `
-  -ExpectedAccountId 123456789012
+  -ExpectedAccountId $accountId
 ```
 
-3. Confirmar que se generó `config/amplify-outputs.<ambiente>.env` y que contiene las dos URLs `amplifyapp.com`.
-4. Entregar al cliente las URLs, nombre del stack y confirmación de que no se inició ningún build.
-5. **DETENERSE.** No ejecutar todavía los pasos siguientes. El cliente debe completar CORS y crear `epico-platform-<ambiente>`.
+1. Confirmar que se generó `config/amplify-outputs.<ambiente>.env` y que contiene las dos URLs `amplifyapp.com`.
+2. Entregar al cliente las URLs, nombre del stack y confirmación de que no se inició ningún build.
+3. **DETENERSE.** No ejecutar todavía los pasos siguientes. El cliente debe completar CORS y crear `epico-platform-<ambiente>`.
+
+Después de comprobar que ambas aplicaciones Amplify acceden correctamente a los repositorios, registrar la fecha de expiración. Revocar o rotar el token cuando termine su vigencia o deje de ser necesario; no reutilizarlo para otros clientes.
 
 ## 7. Fase B: incorporar Outputs de infraestructura compartida
 
