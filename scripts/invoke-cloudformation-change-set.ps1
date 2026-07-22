@@ -9,8 +9,11 @@ param(
     [string]$Region = 'us-east-1'
 )
 $ErrorActionPreference = 'Stop'
-$TemplateFile = [System.IO.Path]::GetFullPath($TemplateFile)
-if (-not (Test-Path -LiteralPath $TemplateFile -PathType Leaf)) { throw "No existe la plantilla: $TemplateFile" }
+if (-not (Test-Path -LiteralPath $TemplateFile -PathType Leaf)) {
+    $attemptedPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($TemplateFile)
+    throw "No existe la plantilla: $attemptedPath"
+}
+$TemplateFile = (Resolve-Path -LiteralPath $TemplateFile).ProviderPath
 $awsBase = @('--region',$Region)
 if ($AwsProfile) { $awsBase += @('--profile',$AwsProfile) }
 $previousPreference = $ErrorActionPreference
