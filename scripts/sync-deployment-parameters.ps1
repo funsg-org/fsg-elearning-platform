@@ -21,7 +21,7 @@ $common = @{
 }
 Write-Contract 'infrastructure\parameters.example.json' 'infrastructure\parameters.json' $common
 
-$branch = if ($env:ENVIRONMENT -eq 'qa') { 'qa' } else { 'main' }
+$branch = if ($env:ENVIRONMENT -eq 'qa') { 'feature/epico-deployment-readiness' } else { 'main' }
 $amplify = $common.Clone()
 $amplify.EnvironmentTag = $env:ENVIRONMENT
 $amplify.DeploymentBranch = $branch

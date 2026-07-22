@@ -2,6 +2,8 @@
 
 `infrastructure/amplify-hosting.yml` declara `epico-client-production` y `epico-admin-production`. Ambas aplicaciones apuntan inicialmente a `feature/epico-deployment-readiness`; sus ramas nacen con `EnableAutoBuild: false` y `main` no se conecta en esta etapa.
 
+El ambiente AWS y la rama Git son parámetros independientes. Para `qa`, `DeploymentBranch` es `feature/epico-deployment-readiness` y su prefijo Amplify es `feature-epico-deployment-readiness`. Para `production`, después de aprobar el PR, la rama es `main`. No se debe crear una rama Git llamada `qa` solo por utilizar ese ambiente AWS.
+
 ## Credencial de GitHub
 
 1. Instalar y autorizar AWS Amplify GitHub App sobre ambos repositorios.

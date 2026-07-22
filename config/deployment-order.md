@@ -52,6 +52,7 @@ Los siete microservicios fijan el paquete npm `serverless` en `4.39.0` y declara
 - No crea ni almacena Access Keys.
 - Se detiene ante el primer error; no continúa con dependencias incompletas.
 - Exige la rama `feature/epico-deployment-readiness` y un repositorio limpio.
+- No confunde el ambiente AWS con la rama Git: `qa` despliega desde `feature/epico-deployment-readiness`; `production` despliega desde `main` después del PR aprobado.
 - Compara la identidad AWS activa con `-ExpectedAccountId` antes de crear recursos.
 - Rechaza `CostCenterTag=PENDING` y URLs que no sean orígenes HTTPS predeterminados de Amplify.
 

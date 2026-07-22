@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 & (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
-if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'qa' } else { 'main' } }
+if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'feature/epico-deployment-readiness' } else { 'main' } }
 if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json' }
 if (-not $AmplifyParametersFile) { $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json' }
 $expectedBranch = $SourceBranch
@@ -51,6 +51,8 @@ function Read-Parameters([string]$Path) {
 
 if ($Region -ne 'us-east-1') { throw 'La region obligatoria es us-east-1.' }
 if ($ExpectedAccountId -notmatch '^\d{12}$') { throw 'ExpectedAccountId debe contener 12 digitos.' }
+$requiredRoleArn = "arn:aws:iam::$ExpectedAccountId`:role/epico-deployment-$Environment"
+if ($ExpectedDeploymentRoleArn -ne $requiredRoleArn) { throw "Para el ambiente '$Environment', ExpectedDeploymentRoleArn debe ser '$requiredRoleArn'." }
 foreach ($tool in @('git','node','npm','npx','aws')) { Assert-Command $tool }
 $nodeVersionText = (& node --version).Trim().TrimStart('v')
 $nodeVersion = [version]$nodeVersionText

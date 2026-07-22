@@ -72,6 +72,8 @@ git status
 git submodule status
 ```
 
+Para esta instalación, `ENVIRONMENT=qa` no implica una rama Git llamada `qa`. El código de prueba permanece en `feature/epico-deployment-readiness`. Solo producción utilizará `main`, después de aprobar el PR correspondiente.
+
 El código permanece en infraestructura FSG y no se copia al cliente.
 
 ## 5. Asumir el rol limitado
