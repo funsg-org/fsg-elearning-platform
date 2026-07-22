@@ -48,6 +48,12 @@ $changeSetInvoker = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts
 if ($changeSetInvoker -notmatch '\$rows\s*\|\s*Format-Table\s+-AutoSize\s*\|\s*Out-Host') {
     throw 'La tabla del change set debe enviarse a Out-Host para no contaminar el valor devuelto.'
 }
+$deploymentRoleTemplate = Get-Content -LiteralPath (Join-Path $repositoryRoot 'infrastructure/deployment-role.yml') -Raw
+foreach ($requiredCloudFormationAction in @('DescribeStackResource','DescribeStackResources','ListStackResources')) {
+    if ($deploymentRoleTemplate -notmatch "cloudformation:$requiredCloudFormationAction") {
+        throw "El rol de despliegue no permite cloudformation:$requiredCloudFormationAction requerido por Serverless."
+    }
+}
 
 foreach ($secretScript in @('scripts/initialize-amplify-github-secret.ps1','scripts/initialize-serverless-access-key-secret.ps1')) {
     $secretScriptText = Get-Content -LiteralPath (Join-Path $repositoryRoot $secretScript) -Raw

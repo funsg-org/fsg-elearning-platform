@@ -237,6 +237,20 @@ El script solicita la clave y crea `epico/production/serverless/access-key` sin 
 
 ## 9. Preflight de proyectos
 
+Antes del preflight, confirmar que el cliente haya desplegado la versión vigente de `infrastructure/deployment-role.yml`. Si la plantilla cambió después de crear el rol, actualizar primero `epico-deployment-role-<ambiente>` desde una terminal nueva autenticada solamente con `epico-bootstrap`; no hacerlo desde una sesión que ya asumió `epico-deployment-<ambiente>`:
+
+```powershell
+aws sso login --profile epico-bootstrap
+$accountId = aws sts get-caller-identity --profile epico-bootstrap --query Account --output text
+
+.\scripts\deploy-deployment-role.ps1 `
+  -Execute -ApproveChangeSets `
+  -AwsProfile epico-bootstrap `
+  -ExpectedAccountId $accountId
+```
+
+Después de la actualización, volver a asumir el rol en la terminal de despliegue. Serverless necesita tanto `cloudformation:DescribeStackResource` como `cloudformation:DescribeStackResources`; son acciones IAM diferentes.
+
 Crear localmente, a partir de los ejemplos, `infrastructure/parameters.json` y `infrastructure/amplify-parameters.json` con los mismos valores no sensibles aprobados por el cliente. Estos archivos permanecen ignorados por Git.
 
 ```powershell
