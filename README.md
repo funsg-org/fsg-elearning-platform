@@ -4,6 +4,8 @@
 
 La plataforma selecciona `qa` o `production` con una única variable `ENVIRONMENT` en el archivo local `.env`. Stacks, sufijos, secretos, tags y parámetros se derivan automáticamente. Consulte [config/multi-environment.md](config/multi-environment.md).
 
+Para una cuenta recién creada, comenzar por [config/client-aws-prerequisites-manual.md](config/client-aws-prerequisites-manual.md) y después continuar con el manual de instalación del cliente.
+
 Repositorio orquestador privado de FSG para administrar, versionar y validar la solución e-learning como una unidad.
 
 Este repositorio no reemplaza los repositorios de los microservicios y frontends. Cada proyecto mantiene su historial y repositorio independiente; el padre registra, mediante Git submodules, el commit exacto de cada componente que integra una versión de la plataforma.

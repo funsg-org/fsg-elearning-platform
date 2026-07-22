@@ -11,6 +11,7 @@ $requiredFiles = @(
     'config/multi-environment.md',
     'config/implementation-manual.md',
     'config/client-installation-manual.md',
+    'config/client-aws-prerequisites-manual.md',
     'config/provider-project-deployment-manual.md',
     'config/client-deployment-handover.md',
     'infrastructure/shared-resources.yml',

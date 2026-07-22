@@ -1,5 +1,7 @@
 # Manual de instalación de infraestructura para el cliente EPICO
 
+> Prerrequisito obligatorio: completar primero `config/client-aws-prerequisites-manual.md`. Ese documento explica cómo preparar la identidad AWS, permisos bootstrap, AWS CLI, `TRUSTED_PRINCIPAL_ARN` y la verificación de `SHA256SUMS.txt` desde una cuenta recién creada.
+
 ## 1. Propósito y alcance
 
 Este manual permite al cliente preparar su cuenta AWS y desplegar la infraestructura base de FSG E-learning. El cliente mantiene control de su cuenta, facturación, identidades, roles, DNS y recursos CloudFormation.
@@ -28,7 +30,7 @@ Para producción se cambia únicamente `ENVIRONMENT=production` en `.env`, se ab
 | Instalar/configurar AWS CLI en equipo del cliente | Ejecuta | Asiste |
 | Configurar identidad AWS y facturación | Ejecuta | No recibe cuenta root |
 | Crear rol limitado de despliegue | Ejecuta | Proporciona plantilla |
-| Ejecutar CloudFormation de infraestructura compartida | Ejecuta | Asiste |
+| Ejecutar CloudFormation de infraestructura ...crecompartida | Ejecuta | Asiste |
 | Crear Amplify conectado a repositorios privados | Autoriza recursos AWS | Ejecuta |
 | Desplegar microservicios y frontends | No accede al código | Ejecuta |
 | Crear/designar administrador Cognito | Designa y valida | Ejecuta alta técnica o asiste |
@@ -48,6 +50,7 @@ scripts/validate-deployment-role.ps1
 scripts/invoke-cloudformation-change-set.ps1
 scripts/validate-infrastructure.ps1
 config/client-installation-manual.md
+config/client-aws-prerequisites-manual.md
 config/client-deployment-handover.md
 SHA256SUMS.txt
 ```

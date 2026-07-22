@@ -27,6 +27,7 @@ $files = @(
     'scripts/validate-infrastructure.ps1',
     'scripts/invoke-cloudformation-change-set.ps1',
     'config/client-installation-manual.md',
+    'config/client-aws-prerequisites-manual.md',
     'config/multi-environment.md',
     'config/client-deployment-handover.md'
 )
