@@ -24,17 +24,94 @@ Iniciar sesión como root únicamente para preparar la administración de la cue
 
 ## 4. Opción recomendada: IAM Identity Center
 
-Desde AWS Console:
+Crear un usuario **no le asigna permisos automáticamente**. La consola separa tres procesos: crear la identidad, crear el conjunto de permisos y asignar ambos a una cuenta AWS. Es normal que las opciones de permisos no aparezcan en el formulario **Add user**.
 
-1. Abrir **IAM Identity Center**.
-2. Elegir **Enable** si todavía no está habilitado.
-3. Crear un usuario nominal para el administrador del cliente; no usar una cuenta compartida.
-4. Crear o seleccionar un Permission Set administrativo para el bootstrap.
-5. Asignar el usuario a la cuenta AWS con ese Permission Set.
-6. Exigir MFA según la política del cliente.
-7. Guardar la URL del portal de acceso y la región de IAM Identity Center.
+### 4.1 Confirmar que sea una instancia de organización
 
-Para una cuenta nueva de prueba puede utilizarse temporalmente `AdministratorAccess` durante la creación del rol limitado. Debe retirarse al finalizar el bootstrap. En una organización empresarial, el equipo de seguridad puede reemplazarlo por una política bootstrap personalizada que permita CloudFormation e IAM para crear `epico-deployment-<ambiente>`.
+1. Iniciar sesión en AWS Console con una identidad capaz de administrar IAM Identity Center. Para la configuración inicial de una cuenta nueva puede ser necesario usar root temporalmente.
+2. Buscar y abrir **IAM Identity Center**.
+3. En la página **Settings** u **Overview**, comprobar el tipo de instancia.
+4. Debe ser una **Organization instance**. En el menú izquierdo debe existir el bloque **Multi-account permissions**, con las opciones **AWS accounts** y **Permission sets**.
+
+Si no aparecen **AWS accounts** y **Permission sets**, detenerse: probablemente se habilitó una **Account instance**, que sirve para ciertas aplicaciones pero no para asignar acceso a cuentas AWS mediante Permission Sets. Habilitar la instancia de organización o solicitar al administrador de AWS Organizations que lo haga.
+
+### 4.2 Crear el usuario — proceso que el cliente ya realizó
+
+1. En el menú izquierdo elegir **Users**.
+2. Elegir **Add user**.
+3. Completar:
+   - **Username**: nombre nominal, por ejemplo `danie.admin`; no usar una cuenta compartida.
+   - **Email address** y confirmación del correo.
+   - **First name**, **Last name** y **Display name**.
+4. En **Password setup**, dejar **Send an email to this user with password setup instructions**, salvo que la política del cliente requiera contraseña de un solo uso.
+5. Elegir **Next**, revisar y finalmente **Add user**.
+6. Abrir el correo de invitación y completar la contraseña del usuario.
+
+Al terminar esta pantalla, el usuario existe en el directorio pero todavía **no puede entrar a la cuenta AWS**.
+
+### 4.3 Crear el Permission Set administrativo temporal
+
+Este paso se realiza fuera del usuario:
+
+1. Volver al panel principal de **IAM Identity Center**.
+2. En el menú izquierdo, bajo **Multi-account permissions**, elegir **Permission sets**.
+3. Elegir **Create permission set**.
+4. En **Select permission set type** seleccionar **Predefined permission set**.
+5. En **Policy for predefined permission set** seleccionar **AdministratorAccess**.
+6. Elegir **Next**.
+7. En **Specify permission set details** verificar:
+   - **Permission set name**: `AdministratorAccess` o `EpicoBootstrapAdministrator`.
+   - **Session duration**: para la prueba puede conservarse `1 hour`.
+   - **Relay state**: dejar vacío.
+8. Elegir **Next**.
+9. En **Review and create**, confirmar que la política AWS administrada sea `AdministratorAccess`.
+10. Elegir **Create**.
+
+Crear el Permission Set tampoco concede acceso todavía. Solo crea la plantilla de permisos que se asignará en el paso siguiente.
+
+### 4.4 Asignar el usuario y Permission Set a la cuenta
+
+1. En el menú izquierdo, bajo **Multi-account permissions**, elegir **AWS accounts**.
+2. En el árbol de cuentas marcar la casilla de la cuenta donde se instalará EPICO. En una cuenta nueva normalmente será la **Management account**.
+3. Elegir **Assign users or groups**.
+4. En **Step 1: Select users and groups**:
+   - Abrir la pestaña **Users**.
+   - Buscar el usuario creado.
+   - Marcar su casilla.
+   - Elegir **Next**.
+5. En **Step 2: Select permission sets**:
+   - Marcar `AdministratorAccess` o `EpicoBootstrapAdministrator`.
+   - Elegir **Next**.
+6. En **Step 3: Review and submit** comprobar el usuario, la cuenta y el Permission Set.
+7. Elegir **Submit**.
+8. Mantener la página abierta hasta que la asignación termine correctamente; puede tardar algunos minutos.
+
+### 4.5 Verificar visualmente la asignación
+
+Puede verificarse por cualquiera de estas rutas:
+
+- **IAM Identity Center → AWS accounts → seleccionar la cuenta**: el usuario debe aparecer en **Assigned users and groups** y el Permission Set en su asignación.
+- **IAM Identity Center → Users → seleccionar el usuario → AWS accounts**: debe aparecer la cuenta y el Permission Set aplicado.
+
+### 4.6 Configurar MFA y obtener la URL del portal
+
+1. Abrir **IAM Identity Center → Settings**.
+2. Buscar la sección **Authentication** o **Multi-factor authentication** y elegir **Configure** si aún no está configurada.
+3. Aplicar la política MFA aprobada por el cliente. Si se usa un proveedor de identidad externo, el MFA se administra en ese proveedor.
+4. Volver a **Settings** o **Dashboard** y copiar **AWS access portal URL**.
+5. Confirmar la **IAM Identity Center Region**; esta región pertenece al directorio y puede ser distinta de `us-east-1`, que sigue siendo la región donde se despliega EPICO.
+6. Iniciar sesión en la URL del portal con el usuario creado.
+7. Abrir la pestaña **Accounts**, seleccionar la cuenta y confirmar que aparece el rol `AdministratorAccess` o `EpicoBootstrapAdministrator`.
+
+Para una cuenta nueva de prueba se utiliza `AdministratorAccess` únicamente durante la creación del rol limitado `epico-deployment-qa`. Debe retirarse al finalizar el bootstrap. En una organización empresarial, el equipo de seguridad puede sustituirlo por una política bootstrap personalizada.
+
+### 4.7 Problemas frecuentes
+
+- **El usuario existe, pero el portal no muestra ninguna cuenta**: falta la asignación de la sección 4.4.
+- **No aparece Multi-account permissions**: la instancia puede ser de cuenta y no de organización, o la identidad actual no tiene permisos para administrar la organización.
+- **El Permission Set existe, pero no aparece en el portal**: todavía no fue asignado al usuario y a la cuenta.
+- **La asignación a la Management account falla por permisos**: la identidad configuradora necesita `IAMFullAccess` o permisos equivalentes para esta operación privilegiada.
+- **No llega el correo del usuario**: revisar spam y la dirección registrada; desde el usuario se puede reenviar o restablecer la invitación según las opciones visibles.
 
 ## 5. Alternativa excepcional: usuario IAM
 
