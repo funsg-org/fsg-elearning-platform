@@ -199,7 +199,6 @@ Comprobar que `infrastructure/parameters.json` contiene `MediaCorsAllowedOrigins
   -AwsProfile epico-bootstrap `
   -Region us-east-1
 ```
-
 La validación no crea recursos.
 
 ## 13. Crear y revisar el Change Set compartido
@@ -227,6 +226,42 @@ $changeSetName = .\scripts\invoke-cloudformation-change-set.ps1 `
   -AwsProfile epico-bootstrap `
   -Region us-east-1
 ```
+
+Comprobar inmediatamente que la variable contiene un único texto y no objetos internos de PowerShell:
+
+```powershell
+$changeSetName
+$changeSetName.GetType().FullName
+```
+
+El tipo esperado es `System.String` y el valor debe comenzar con `review-epico-platform-<ambiente>-`. No continuar si aparecen textos como `FormatEntryData`, `FormatStartData` o varios valores.
+
+Como recuperación de una ejecución realizada con una versión anterior del script, extraer únicamente el nombre generado en esa misma ejecución:
+
+```powershell
+$changeSetName = @(
+  $changeSetName | Where-Object {
+    $_ -is [string] -and $_ -match "^review-$([regex]::Escape($platformStack))-"
+  }
+) | Select-Object -Last 1
+
+if ([string]::IsNullOrWhiteSpace($changeSetName)) {
+  throw 'No se pudo recuperar el nombre del Change Set; créelo nuevamente.'
+}
+```
+
+No copiar el nombre de otro ambiente o intento. Antes de ejecutarlo, AWS debe mostrar estado `CREATE_COMPLETE` y ejecución `AVAILABLE`:
+
+```powershell
+aws cloudformation describe-change-set `
+  --stack-name $platformStack `
+  --change-set-name $changeSetName `
+  --profile epico-bootstrap `
+  --region us-east-1 `
+  --query "[Status,ExecutionStatus,ChangeSetName]" `
+  --output table
+```
+
 
 Antes de aprobar debe comprobar que el Change Set contiene únicamente recursos esperados:
 
