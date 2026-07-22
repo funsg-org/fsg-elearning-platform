@@ -89,6 +89,14 @@ aws sts get-caller-identity
 
 Confirmar `assumed-role/epico-deployment-<ambiente>` y la cuenta esperada.
 
+El comando `enter-deployment-role.ps1` y todos los comandos de las fases siguientes deben ejecutarse en **la misma ventana de PowerShell**. Las credenciales STS se guardan solamente en la memoria de ese proceso. Antes de crear secretos, comprobar otra vez:
+
+```powershell
+aws sts get-caller-identity --query Arn --output text
+```
+
+El resultado debe contener `assumed-role/epico-deployment-<ambiente>/`. Si muestra `user/`, `AWSReservedSSO_` u otro rol, detenerse y volver a ejecutar `enter-deployment-role.ps1`.
+
 ## 6. Fase A: preparar Amplify sin publicar
 
 Esta fase no necesita Cognito, S3, CloudFront ni URLs de microservicios.

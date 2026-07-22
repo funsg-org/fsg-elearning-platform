@@ -21,10 +21,17 @@ $identityRaw = & aws sts get-caller-identity --output json @awsBase
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo verificar la identidad AWS.' }
 $identity = ($identityRaw -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta activa $($identity.Account); se esperaba $ExpectedAccountId." }
+if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/epico-deployment-$Environment/") {
+    throw "La identidad activa '$($identity.Arn)' no es una sesión de epico-deployment-$Environment. Ejecute enter-deployment-role.ps1 en esta misma terminal."
+}
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $lookup = & aws secretsmanager describe-secret --secret-id $SecretId @awsBase 2>&1
 $lookupExit = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorActionPreference
 if ($lookupExit -eq 0) { throw "El secreto '$SecretId' ya existe; este script no lo sobrescribe." }
-if (($lookup -join [Environment]::NewLine) -notmatch 'ResourceNotFoundException') { throw "No se pudo comprobar con seguridad el secreto '$SecretId'." }
+$lookupText = (($lookup | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
+if ($lookupText -notmatch 'ResourceNotFoundException') { throw "No se pudo comprobar con seguridad el secreto '$SecretId': $lookupText" }
 $secureKey = Read-Host 'SERVERLESS_ACCESS_KEY' -AsSecureString
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
 $plainKey = $null

@@ -26,11 +26,18 @@ $identityRaw = & aws sts get-caller-identity --output json @awsBase
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo verificar la identidad AWS.' }
 $identity = ($identityRaw -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta activa $($identity.Account); se esperaba $ExpectedAccountId." }
+if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/epico-deployment-$Environment/") {
+    throw "La identidad activa '$($identity.Arn)' no es una sesión de epico-deployment-$Environment. Ejecute enter-deployment-role.ps1 en esta misma terminal."
+}
 
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $secretLookup = & aws secretsmanager describe-secret --secret-id $SecretId @awsBase 2>&1
 $secretLookupExitCode = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorActionPreference
 if ($secretLookupExitCode -eq 0) { throw "El secreto '$SecretId' ya existe; este script no lo sobrescribe ni lo rota." }
-if (($secretLookup -join [Environment]::NewLine) -notmatch 'ResourceNotFoundException') { throw "No se pudo comprobar con seguridad si existe el secreto '$SecretId'." }
+$secretLookupText = (($secretLookup | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
+if ($secretLookupText -notmatch 'ResourceNotFoundException') { throw "No se pudo comprobar con seguridad si existe el secreto '$SecretId': $secretLookupText" }
 $secureToken = Read-Host 'Token GitHub para la conexion inicial de Amplify' -AsSecureString
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
 $plainToken = $null
