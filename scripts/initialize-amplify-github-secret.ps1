@@ -47,10 +47,10 @@ try {
     if ([string]::IsNullOrWhiteSpace($plainToken)) { throw 'El token no puede estar vacio.' }
     $secretPayload = @{ token=$plainToken } | ConvertTo-Json -Compress
     $request = [ordered]@{
-        name=$SecretId
-        description='Token de conexion inicial entre AWS Amplify y GitHub.'
-        secretString=$secretPayload
-        tags=@(
+        Name=$SecretId
+        Description='Token de conexion inicial entre AWS Amplify y GitHub.'
+        SecretString=$secretPayload
+        Tags=@(
             @{ Key='Solution'; Value='E-Learning' },
             @{ Key='Project'; Value='FSG-Elearning' },
             @{ Key='Client'; Value='EPICO' },
@@ -61,8 +61,15 @@ try {
         )
     }
     [System.IO.File]::WriteAllText($temporaryFile,($request | ConvertTo-Json -Depth 5),[System.Text.UTF8Encoding]::new($false))
-    & aws secretsmanager create-secret --cli-input-json "file://$temporaryFile" @awsBase | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el secreto.' }
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $createOutput = & aws secretsmanager create-secret --cli-input-json "file://$temporaryFile" @awsBase 2>&1
+    $createExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($createExitCode -ne 0) {
+        $createOutputText = (($createOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
+        throw "No se pudo crear el secreto: $createOutputText"
+    }
 }
 finally {
     $plainToken = $null

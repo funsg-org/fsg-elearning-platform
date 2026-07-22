@@ -40,18 +40,25 @@ try {
     $plainKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
     if ([string]::IsNullOrWhiteSpace($plainKey)) { throw 'La clave no puede estar vacia.' }
     $request = [ordered]@{
-        name=$SecretId
-        description='Access key operativa para autenticar Serverless Framework v4.'
-        secretString=(@{ accessKey=$plainKey } | ConvertTo-Json -Compress)
-        tags=@(
+        Name=$SecretId
+        Description='Access key operativa para autenticar Serverless Framework v4.'
+        SecretString=(@{ accessKey=$plainKey } | ConvertTo-Json -Compress)
+        Tags=@(
             @{ Key='Solution'; Value='E-Learning' }, @{ Key='Project'; Value='FSG-Elearning' },
             @{ Key='Client'; Value='EPICO' }, @{ Key='Environment'; Value=$Environment },
             @{ Key='Owner'; Value='FSG' }, @{ Key='ManagedBy'; Value='IaC' }, @{ Key='CostCenter'; Value=$CostCenter }
         )
     }
     [System.IO.File]::WriteAllText($temporaryFile,($request | ConvertTo-Json -Depth 5),[System.Text.UTF8Encoding]::new($false))
-    & aws secretsmanager create-secret --cli-input-json "file://$temporaryFile" @awsBase | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el secreto Serverless.' }
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $createOutput = & aws secretsmanager create-secret --cli-input-json "file://$temporaryFile" @awsBase 2>&1
+    $createExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($createExitCode -ne 0) {
+        $createOutputText = (($createOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
+        throw "No se pudo crear el secreto Serverless: $createOutputText"
+    }
 } finally {
     $plainKey = $null
     if ($pointer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }

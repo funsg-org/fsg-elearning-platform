@@ -44,6 +44,14 @@ foreach ($relativePath in $trackedScripts) {
 }
 if ($parseErrors.Count) { $parseErrors | Format-Table -AutoSize; throw 'Hay scripts PowerShell con errores sintacticos.' }
 
+foreach ($secretScript in @('scripts/initialize-amplify-github-secret.ps1','scripts/initialize-serverless-access-key-secret.ps1')) {
+    $secretScriptText = Get-Content -LiteralPath (Join-Path $repositoryRoot $secretScript) -Raw
+    foreach ($requiredCliKey in @('Name','Description','SecretString','Tags')) {
+        if ($secretScriptText -cnotmatch "(?m)^\s+$requiredCliKey=") { throw "$secretScript debe usar la clave AWS CLI '$requiredCliKey' respetando mayusculas." }
+    }
+    if ($secretScriptText -cmatch '(?m)^\s+(name|description|secretString|tags)=') { throw "$secretScript contiene claves create-secret con mayusculas incorrectas." }
+}
+
 foreach ($jsonFile in @(
     'infrastructure/parameters.example.json',
     'infrastructure/amplify-parameters.example.json',
