@@ -44,6 +44,11 @@ foreach ($relativePath in $trackedScripts) {
 }
 if ($parseErrors.Count) { $parseErrors | Format-Table -AutoSize; throw 'Hay scripts PowerShell con errores sintacticos.' }
 
+$changeSetInvoker = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/invoke-cloudformation-change-set.ps1') -Raw
+if ($changeSetInvoker -notmatch '\$rows\s*\|\s*Format-Table\s+-AutoSize\s*\|\s*Out-Host') {
+    throw 'La tabla del change set debe enviarse a Out-Host para no contaminar el valor devuelto.'
+}
+
 foreach ($secretScript in @('scripts/initialize-amplify-github-secret.ps1','scripts/initialize-serverless-access-key-secret.ps1')) {
     $secretScriptText = Get-Content -LiteralPath (Join-Path $repositoryRoot $secretScript) -Raw
     foreach ($requiredCliKey in @('Name','Description','SecretString','Tags')) {

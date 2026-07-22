@@ -69,7 +69,7 @@ $rows = foreach ($change in $description.Changes) {
     [pscustomobject]@{ Action=$resource.Action; LogicalId=$resource.LogicalResourceId; Type=$resource.ResourceType; Replacement=$resource.Replacement; Scope=($resource.Scope -join ',') }
 }
 Write-Host "Change set: $changeSetName | Stack: $StackName | Tipo: $changeSetType" -ForegroundColor Cyan
-$rows | Format-Table -AutoSize
+$rows | Format-Table -AutoSize | Out-Host
 if (-not $ApproveExecution) {
     Write-Warning 'Change set creado pero NO ejecutado. Revíselo y elimínelo o ejecútelo explícitamente.'
     Write-Output $changeSetName
