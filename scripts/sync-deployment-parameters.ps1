@@ -17,6 +17,7 @@ function Write-Contract([string]$Example,[string]$Output,[hashtable]$Overrides) 
 $common = @{
     ResourcePrefix=$env:RESOURCE_PREFIX; ResourceSuffix=$env:ENVIRONMENT; Environment=$env:ENVIRONMENT
     ClientTag=$env:TAG_CLIENT; CostCenterTag=$env:TAG_COST_CENTER
+    MediaCorsAllowedOrigins=$env:MEDIA_CORS_ALLOWED_ORIGINS
 }
 Write-Contract 'infrastructure\parameters.example.json' 'infrastructure\parameters.json' $common
 

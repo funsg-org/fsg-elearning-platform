@@ -2,13 +2,13 @@
 
 ## 1. Alcance
 
-Este runbook es exclusivo de FSG. Comienza cuando el cliente ya creó el rol y la infraestructura compartida, y entregó acceso temporal y outputs no sensibles. No crea la cuenta AWS ni solicita credenciales root.
+Este runbook es exclusivo de FSG y se ejecuta en dos momentos. La **Fase A** comienza cuando el cliente ya creó el rol limitado: FSG prepara Amplify sin publicar y devuelve sus URLs. FSG se detiene mientras el cliente crea la infraestructura compartida. La **Fase B** comienza después de que Cognito, S3 y CloudFront existen y continúa con microservicios y frontends. No crea la cuenta AWS ni solicita credenciales root.
 
 ## 2. Seleccionar el ambiente antes de operar
 
 Copiar `.env.example` como `.env` y seleccionar el ambiente:
 
-```powershell
+```dotenv
 ENVIRONMENT=qa
 ```
 
@@ -16,15 +16,20 @@ No es necesario pasar `-Environment`: todos los scripts leen `.env`. Para cambia
 
 ## 3. Información que debe recibir FSG
 
+### Para la Fase A — todavía no existen Cognito, S3 ni CloudFront
+
 - Account ID de 12 dígitos y región `us-east-1`.
-- ARN de `epico-deployment-production`.
+- ARN de `epico-deployment-<ambiente>`.
 - Método SSO temporal; excepcionalmente Access Keys de un usuario temporal dedicado.
-- Outputs de Cognito, S3 y CloudFront.
-- IDs/URLs de las dos aplicaciones Amplify.
-- Correo y nombre del administrador inicial.
 - CostCenter definitivo.
-- Copia no sensible de los parámetros aprobados para poder ejecutar el preflight local.
 - Ventana autorizada de despliegue.
+
+### Para la Fase B — después de la infraestructura compartida
+
+- Confirmación `CREATE_COMPLETE` de `epico-platform-<ambiente>`.
+- Outputs no sensibles de Cognito, S3 y CloudFront, o permiso para consultarlos con AWS CLI.
+- Correo y nombre del administrador inicial.
+- Copia no sensible de los parámetros aprobados.
 
 Rechazar credenciales root, contraseñas personales o sesiones pertenecientes a otro empleado.
 
@@ -72,17 +77,56 @@ El código permanece en infraestructura FSG y no se copia al cliente.
 ## 5. Asumir el rol limitado
 
 ```powershell
+. .\scripts\load-environment.ps1 -Quiet
+$accountId = aws sts get-caller-identity --query Account --output text --profile epico-provider
+$deploymentRoleArn = "arn:aws:iam::$accountId`:role/epico-deployment-$env:ENVIRONMENT"
+
 .\scripts\enter-deployment-role.ps1 `
-  -RoleArn arn:aws:iam::123456789012:role/epico-deployment-production `
+  -RoleArn $deploymentRoleArn `
   -AwsProfile epico-provider
 aws sts get-caller-identity
 ```
 
-Confirmar `assumed-role/epico-deployment-production` y la cuenta esperada.
+Confirmar `assumed-role/epico-deployment-<ambiente>` y la cuenta esperada.
 
-## 6. Incorporar outputs entregados
+## 6. Fase A: preparar Amplify sin publicar
 
-Crear localmente `config/platform-outputs.env`, sin confirmar en Git:
+Esta fase no necesita Cognito, S3, CloudFront ni URLs de microservicios.
+
+1. Crear en Secrets Manager el token GitHub de Amplify mediante entrada segura:
+
+```powershell
+.\scripts\initialize-amplify-github-secret.ps1 `
+  -Execute `
+  -ExpectedAccountId 123456789012 `
+  -CostCenter FSG-ELRN-EPICO-QA
+```
+
+2. Crear las dos aplicaciones y sus ramas con auto-build desactivado:
+
+```powershell
+.\scripts\deploy-amplify-bootstrap.ps1 `
+  -Execute -ApproveChangeSets `
+  -ExpectedAccountId 123456789012
+```
+
+3. Confirmar que se generó `config/amplify-outputs.<ambiente>.env` y que contiene las dos URLs `amplifyapp.com`.
+4. Entregar al cliente las URLs, nombre del stack y confirmación de que no se inició ningún build.
+5. **DETENERSE.** No ejecutar todavía los pasos siguientes. El cliente debe completar CORS y crear `epico-platform-<ambiente>`.
+
+## 7. Fase B: incorporar Outputs de infraestructura compartida
+
+Reanudar únicamente después de que el cliente confirme `CREATE_COMPLETE`.
+
+Opción recomendada, exportarlos directamente desde CloudFormation:
+
+```powershell
+. .\scripts\load-environment.ps1 -Quiet
+.\scripts\export-cloudformation-outputs.ps1 `
+  -StackName "epico-platform-$env:ENVIRONMENT"
+```
+
+Como alternativa, crear localmente `config/platform-outputs.<ambiente>.env`, sin confirmar en Git:
 
 ```text
 AWS_ACCOUNT_ID=<cuenta>
@@ -102,7 +146,7 @@ Validar:
 .\scripts\validate-environment.ps1 -RequirePlatformOutputs
 ```
 
-## 7. Preparar Serverless Framework
+## 8. Preparar Serverless Framework
 
 Crear una Access Key dedicada desde la organización FSG en Serverless Dashboard (`Settings` → `Access Keys`). No pedir al cliente que la genere ni entregársela.
 
@@ -116,7 +160,7 @@ Guardar la clave en la cuenta del cliente mediante entrada segura:
 
 El script solicita la clave y crea `epico/production/serverless/access-key` sin mostrarla.
 
-## 8. Preflight de proyectos
+## 9. Preflight de proyectos
 
 Crear localmente, a partir de los ejemplos, `infrastructure/parameters.json` y `infrastructure/amplify-parameters.json` con los mismos valores no sensibles aprobados por el cliente. Estos archivos permanecen ignorados por Git.
 
@@ -128,11 +172,11 @@ Crear localmente, a partir de los ejemplos, `infrastructure/parameters.json` y `
 
 Verificar rama, repositorios limpios, Serverless 4.39.0, secreto, outputs, región y cuenta.
 
-## 9. Instalar dependencias sin tocar AWS
+## 10. Instalar dependencias sin tocar AWS
 
 En cada servicio ejecutar `npm ci --ignore-scripts`. Si uno falla, detener la ventana y no desplegar ningún servicio.
 
-## 10. Desplegar los siete microservicios
+## 11. Desplegar los siete microservicios
 
 Orden obligatorio:
 
@@ -146,7 +190,7 @@ Orden obligatorio:
 
 Antes de cada `npx serverless deploy`, capturar el manifiesto con `capture-service-recovery-manifest.ps1`. Usar `--stage production --region us-east-1`. Detenerse ante el primer error y generar las instrucciones de recuperación; no usar `serverless remove` como rollback.
 
-## 11. Exportar URLs de servicios
+## 12. Exportar URLs de servicios
 
 ```powershell
 .\scripts\export-serverless-outputs.ps1
@@ -156,7 +200,7 @@ Antes de cada `npx serverless deploy`, capturar el manifiesto con `capture-servi
 
 Revisar que los JSON de Amplify contengan solamente URLs, IDs públicos, CDN y grupo administrativo; nunca secretos.
 
-## 12. Configurar y publicar frontends
+## 13. Configurar y publicar frontends
 
 1. Cargar las variables generadas en las ramas Amplify.
 2. Confirmar `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP` en el administrativo.
@@ -166,7 +210,7 @@ Revisar que los JSON de Amplify contengan solamente URLs, IDs públicos, CDN y g
 6. Iniciar después el build público.
 7. Registrar IDs de jobs y resultados.
 
-## 13. Crear el administrador inicial
+## 14. Crear el administrador inicial
 
 ```powershell
 $initialPassword = Read-Host 'Clave inicial' -AsSecureString
@@ -178,11 +222,11 @@ $initialPassword = Read-Host 'Clave inicial' -AsSecureString
 
 Entregar usuario y clave por canales separados. No registrar la contraseña. Solicitar cambio inmediato.
 
-## 14. Pruebas y devolución al cliente
+## 15. Pruebas y devolución al cliente
 
 Probar salud de APIs, consola administrativa, portal público, rechazo de usuario común, operaciones principales, S3 y CloudFront. Entregar URLs, inventario y resultados para que el cliente continúe con aceptación; no entregar outputs secretos, código o manifiestos internos.
 
-## 15. Cierre
+## 16. Cierre
 
 - Confirmar repositorios limpios y bitácora interna.
 - Guardar recuperación en almacenamiento FSG restringido.
@@ -191,7 +235,7 @@ Probar salud de APIs, consola administrativa, portal público, rechazo de usuari
 - Eliminar perfiles locales temporales cuando ya no sean necesarios.
 - Conservar únicamente documentación operativa autorizada.
 
-## 16. Procedimiento interno para futuras actualizaciones
+## 17. Procedimiento interno para futuras actualizaciones
 
 La promoción obligatoria es QA → aceptación del cliente → producción. Deben ser dos ventanas y dos permisos temporales diferenciados. Registrar el commit aprobado en QA y verificar que sea el mismo que se despliega en producción; no reconstruir desde una rama con cambios adicionales.
 

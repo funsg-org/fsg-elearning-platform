@@ -116,20 +116,18 @@ Opción recomendada:
 
 Alternativa excepcional: usuario IAM exclusivo de despliegue con Access Keys rotables, sin acceso a consola y sin permisos adicionales. Las claves se entregan por un canal secreto aprobado, se usan en un perfil local FSG y se eliminan inmediatamente después de la instalación.
 
-## 8. Crear archivos de parámetros del cliente
+## 8. Generar parámetros locales desde `.env`
 
 ```powershell
-Copy-Item infrastructure/deployment-role-parameters.example.json infrastructure/deployment-role-parameters.json
-Copy-Item infrastructure/parameters.example.json infrastructure/parameters.json
+.\scripts\sync-deployment-parameters.ps1
 ```
 
-En ambos archivos:
+El script genera los tres `parameters.json` locales. No se editan directamente. Antes de continuar, `.env` debe contener:
 
-- Reemplazar `PENDING` por el centro de costo definitivo.
-- Mantener `ResourcePrefix=epico`.
-- Mantener región/ambiente de producción según el contrato.
-
-En `deployment-role-parameters.json`, colocar como `TrustedPrincipalArn` el ARN de la identidad temporal creada para FSG. Los archivos no contienen claves secretas.
+- `ENVIRONMENT=qa` para la primera prueba.
+- `TAG_COST_CENTER=FSG-ELRN-EPICO-QA`.
+- `TRUSTED_PRINCIPAL_ARN` con el ARN IAM obtenido en prerrequisitos.
+- `MEDIA_CORS_ALLOWED_ORIGINS=PENDING` hasta que el proveedor entregue las URLs Amplify en el paso 10.
 
 ## 9. Validar y crear el rol de despliegue
 
@@ -158,7 +156,7 @@ Después de revisar el Change Set:
 Registrar el output:
 
 ```text
-arn:aws:iam::123456789012:role/epico-deployment-production
+arn:aws:iam::123456789012:role/epico-deployment-qa
 ```
 
 ## 10. Corresponde al proveedor: preparar Amplify sin publicar
@@ -174,15 +172,25 @@ FSG entrega al cliente:
 
 El cliente no recibe repositorios, token GitHub ni código fuente.
 
+Al terminar esta intervención, el proveedor **se detiene** y devuelve el control al cliente. Todavía no debe desplegar microservicios ni frontends porque Cognito, S3 y CloudFront aún no existen.
+
 ## 11. Completar CORS de infraestructura compartida
 
-En `infrastructure/parameters.json`, agregar las dos URLs exactas entregadas por FSG al parámetro `MediaCorsAllowedOrigins`. No usar `*`, rutas ni barra final.
+Editar `.env` y reemplazar `MEDIA_CORS_ALLOWED_ORIGINS=PENDING` por las dos URLs exactas entregadas por FSG. No usar `*`, rutas ni barra final.
 
 Ejemplo conceptual:
 
 ```text
 https://rama.id-publico.amplifyapp.com,https://rama.id-admin.amplifyapp.com
 ```
+
+Regenerar los parámetros:
+
+```powershell
+.\scripts\sync-deployment-parameters.ps1
+```
+
+Comprobar que `infrastructure/parameters.json` contiene `MediaCorsAllowedOrigins` con ambas URLs.
 
 ## 12. Validar la plantilla compartida
 
@@ -207,8 +215,11 @@ $platformParameters = Get-Content infrastructure/parameters.json -Raw |
 Crear el Change Set sin ejecutarlo:
 
 ```powershell
+$environment = .\scripts\get-deployment-environment.ps1
+$platformStack = "epico-platform-$environment"
+
 $changeSetName = .\scripts\invoke-cloudformation-change-set.ps1 `
-  -StackName epico-platform-production `
+  -StackName $platformStack `
   -TemplateFile infrastructure/shared-resources.yml `
   -ParameterOverrides $platformParameters `
   -Capabilities CAPABILITY_NAMED_IAM `
@@ -228,13 +239,13 @@ Revisar que no existan eliminaciones o reemplazos inesperados. Ejecutar el Chang
 
 ```powershell
 aws cloudformation execute-change-set `
-  --stack-name epico-platform-production `
+  --stack-name $platformStack `
   --change-set-name $changeSetName `
   --profile epico-bootstrap `
   --region us-east-1
 
 aws cloudformation wait stack-create-complete `
-  --stack-name epico-platform-production `
+  --stack-name $platformStack `
   --profile epico-bootstrap `
   --region us-east-1
 ```
@@ -275,6 +286,8 @@ El cliente entrega a FSG por canal aprobado:
 No entregar: contraseña root, MFA, contraseña personal, acceso de otro empleado ni valor del Client Secret Cognito.
 
 ## 16. Corresponde al proveedor: desplegar proyectos privados
+
+Esta es la **segunda intervención del proveedor**. Solo comienza después de que el cliente confirme `CREATE_COMPLETE` y entregue los Outputs del paso 14.
 
 FSG realiza, desde su estación privada:
 
