@@ -128,7 +128,7 @@ La creación mediante CloudFormation requiere además un Personal Access Token:
 6. Completar:
    - **Note**: `AWS Amplify EPICO QA bootstrap`.
    - **Expiration**: una vigencia aprobada para la instalación; para la prueba puede utilizarse 30 días.
-   - **Select scopes**: marcar solamente `admin:repo_hook`.
+   - **Select scopes**: marcar `repo` y `admin:repo_hook`. El scope `repo` es necesario para que Amplify pueda leer estos repositorios privados; `admin:repo_hook` permite administrar el webhook de despliegue.
 7. Elegir **Generate token**.
 8. Copiar el token inmediatamente; GitHub no lo vuelve a mostrar.
 
@@ -147,6 +147,17 @@ $accountId = aws sts get-caller-identity --query Account --output text
   -CostCenter FSG-ELRN-EPICO-QA
 ```
 
+Si el secreto ya existe y es necesario sustituir un token inválido o vencido, crear primero un PAT classic nuevo con `repo` y `admin:repo_hook` y ejecutar:
+
+```powershell
+.\scripts\initialize-amplify-github-secret.ps1 `
+  -Execute -RotateExisting `
+  -ExpectedAccountId $accountId `
+  -CostCenter FSG-ELRN-EPICO-QA
+```
+
+El script reemplaza únicamente el valor del secreto existente; conserva su nombre y etiquetas. No modifica archivos `.env` ni JSON.
+
 El script almacena el token en `epico/qa/github/amplify-token` sin imprimirlo. No enviarlo al cliente ni a FSG por un canal no aprobado.
 
 ### 6.4 Crear Amplify sin publicar
@@ -158,6 +169,17 @@ Crear las dos aplicaciones y sus ramas con auto-build desactivado:
   -Execute -ApproveChangeSets `
   -ExpectedAccountId $accountId
 ```
+
+Antes de crear el change set, el script consulta ambos repositorios con el token almacenado. Si alguno devuelve 404, verificar los scopes `repo` y `admin:repo_hook`, la autorización SSO y que AWS Amplify GitHub App tenga seleccionados ambos repositorios.
+
+Si un intento anterior dejó `epico-amplify-qa` en `ROLLBACK_COMPLETE`, corregir primero el token y luego eliminar únicamente ese stack fallido:
+
+```powershell
+aws cloudformation delete-stack --stack-name epico-amplify-qa --region us-east-1
+aws cloudformation wait stack-delete-complete --stack-name epico-amplify-qa --region us-east-1
+```
+
+La eliminación del stack requiere confirmación consciente. No ejecutar estos comandos si el stack contiene recursos válidos que deban conservarse.
 
 1. Confirmar que se generó `config/amplify-outputs.<ambiente>.env` y que contiene las dos URLs `amplifyapp.com`.
 2. Entregar al cliente las URLs, nombre del stack y confirmación de que no se inició ningún build.

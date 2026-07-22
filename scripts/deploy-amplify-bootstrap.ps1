@@ -45,6 +45,9 @@ if ($values.ResourceSuffix -ne $Environment -or $values.EnvironmentTag -ne $Envi
 foreach ($required in @('CostCenterTag','GitHubAccessTokenSecretId','DeploymentBranch','DeploymentBranchDomainPrefix')) {
     if (-not $values.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($values[$required])) { throw "Falta el parametro '$required'." }
 }
+foreach ($required in @('ClientRepository','AdminRepository')) {
+    if (-not $values.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($values[$required])) { throw "Falta el parametro '$required'." }
+}
 if ($values.CostCenterTag -eq 'PENDING') { throw 'CostCenterTag continua en PENDING.' }
 $expectedDomainPrefix = $values.DeploymentBranch.ToLowerInvariant() -replace '[^a-z0-9-]','-'
 if ($values.DeploymentBranchDomainPrefix -ne $expectedDomainPrefix) { throw "DeploymentBranchDomainPrefix debe ser '$expectedDomainPrefix'." }
@@ -57,6 +60,13 @@ $identity = ($identityRaw -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta activa $($identity.Account); se esperaba $ExpectedAccountId." }
 & aws secretsmanager describe-secret --secret-id $values.GitHubAccessTokenSecretId @awsBase | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "No existe o no es accesible el secreto '$($values.GitHubAccessTokenSecretId)'." }
+$githubAccessArguments = @{
+    SecretId=$values.GitHubAccessTokenSecretId
+    RepositoryUrls=@($values.ClientRepository,$values.AdminRepository)
+    Region=$Region
+}
+if ($AwsProfile) { $githubAccessArguments.AwsProfile=$AwsProfile }
+& (Join-Path $PSScriptRoot 'test-amplify-github-access.ps1') @githubAccessArguments
 
 $changeSetArguments = @{ StackName=$StackName; TemplateFile=$templateFile; ParameterOverrides=$overrides.ToArray(); ApproveExecution=$true; Region=$Region }
 if ($AwsProfile) { $changeSetArguments.AwsProfile=$AwsProfile }

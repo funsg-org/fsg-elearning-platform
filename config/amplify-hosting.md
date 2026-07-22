@@ -16,7 +16,7 @@ El secreto puede inicializarse sin colocar el token en el historial del shell:
 ./scripts/initialize-amplify-github-secret.ps1 -Execute -AwsProfile epico -ExpectedAccountId 123456789012 -CostCenter CODIGO_REAL
 ```
 
-El script pide el token de forma oculta y no sobrescribe secretos existentes.
+El script pide un PAT classic de GitHub de forma oculta. Para repositorios privados debe incluir los scopes `repo` y `admin:repo_hook`, además de la autorización SSO de la organización si corresponde. No sobrescribe secretos existentes salvo que se indique explícitamente `-RotateExisting`.
 
 ## Orden futuro
 
@@ -49,6 +49,6 @@ Después de autorizar Amplify GitHub App, crear el secreto, completar `amplify-p
 ./scripts/deploy-amplify-bootstrap.ps1 -Execute -ApproveChangeSets -AwsProfile epico -ExpectedAccountId 123456789012
 ```
 
-El modo de ejecución comprueba la identidad AWS y la existencia del secreto antes de crear el stack. Al terminar genera `config/amplify-outputs.env`, que está ignorado por Git.
+El modo de ejecución comprueba la identidad AWS, la existencia del secreto y que el token pueda leer ambos repositorios antes de crear el stack. Al terminar genera `config/amplify-outputs.env`, que está ignorado por Git.
 
 Normalmente no es necesario ejecutar el bootstrap por separado: `scripts/deploy-platform.ps1 -Execute` ya lo coordina al inicio y, al final, aplica las variables públicas manteniendo desactivados los builds.

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Execute,
+    [switch]$RotateExisting,
     [ValidateSet('qa','production')][string]$Environment,
     [string]$SecretId,
     [string]$AwsProfile,
@@ -35,9 +36,10 @@ $ErrorActionPreference = 'Continue'
 $secretLookup = & aws secretsmanager describe-secret --secret-id $SecretId @awsBase 2>&1
 $secretLookupExitCode = $LASTEXITCODE
 $ErrorActionPreference = $previousErrorActionPreference
-if ($secretLookupExitCode -eq 0) { throw "El secreto '$SecretId' ya existe; este script no lo sobrescribe ni lo rota." }
+if ($secretLookupExitCode -eq 0 -and -not $RotateExisting) { throw "El secreto '$SecretId' ya existe. Use -RotateExisting únicamente para reemplazar su valor por un token nuevo." }
 $secretLookupText = (($secretLookup | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
-if ($secretLookupText -notmatch 'ResourceNotFoundException') { throw "No se pudo comprobar con seguridad si existe el secreto '$SecretId': $secretLookupText" }
+if ($secretLookupExitCode -ne 0 -and $secretLookupText -notmatch 'ResourceNotFoundException') { throw "No se pudo comprobar con seguridad si existe el secreto '$SecretId': $secretLookupText" }
+if ($secretLookupExitCode -ne 0 -and $RotateExisting) { throw "El secreto '$SecretId' no existe; ejecute el script sin -RotateExisting para crearlo." }
 $secureToken = Read-Host 'Token GitHub para la conexion inicial de Amplify' -AsSecureString
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
 $plainToken = $null
@@ -46,11 +48,18 @@ try {
     $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
     if ([string]::IsNullOrWhiteSpace($plainToken)) { throw 'El token no puede estar vacio.' }
     $secretPayload = @{ token=$plainToken } | ConvertTo-Json -Compress
-    $request = [ordered]@{
-        Name=$SecretId
-        Description='Token de conexion inicial entre AWS Amplify y GitHub.'
-        SecretString=$secretPayload
-        Tags=@(
+    if ($RotateExisting) {
+        $request = [ordered]@{
+            SecretId=$SecretId
+            SecretString=$secretPayload
+        }
+        $operation = 'put-secret-value'
+    } else {
+        $request = [ordered]@{
+            Name=$SecretId
+            Description='Token de conexion inicial entre AWS Amplify y GitHub.'
+            SecretString=$secretPayload
+            Tags=@(
             @{ Key='Solution'; Value='E-Learning' },
             @{ Key='Project'; Value='FSG-Elearning' },
             @{ Key='Client'; Value='EPICO' },
@@ -58,17 +67,19 @@ try {
             @{ Key='Owner'; Value='FSG' },
             @{ Key='ManagedBy'; Value='IaC' },
             @{ Key='CostCenter'; Value=$CostCenter }
-        )
+            )
+        }
+        $operation = 'create-secret'
     }
     [System.IO.File]::WriteAllText($temporaryFile,($request | ConvertTo-Json -Depth 5),[System.Text.UTF8Encoding]::new($false))
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    $createOutput = & aws secretsmanager create-secret --cli-input-json "file://$temporaryFile" @awsBase 2>&1
+    $createOutput = & aws secretsmanager $operation --cli-input-json "file://$temporaryFile" @awsBase 2>&1
     $createExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousErrorActionPreference
     if ($createExitCode -ne 0) {
         $createOutputText = (($createOutput | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
-        throw "No se pudo crear el secreto: $createOutputText"
+        throw "No se pudo $(if ($RotateExisting) { 'rotar' } else { 'crear' }) el secreto: $createOutputText"
     }
 }
 finally {
@@ -76,4 +87,4 @@ finally {
     if ($pointer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
     Remove-Item -LiteralPath $temporaryFile -Force -ErrorAction SilentlyContinue
 }
-Write-Host "Secreto '$SecretId' creado sin exponer su valor en la linea de comandos." -ForegroundColor Green
+Write-Host "Secreto '$SecretId' $(if ($RotateExisting) { 'rotado' } else { 'creado' }) sin exponer su valor en la linea de comandos." -ForegroundColor Green

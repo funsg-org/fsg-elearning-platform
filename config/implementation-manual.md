@@ -191,7 +191,7 @@ Se guarda en `epico/production/serverless/access-key`; nunca en `.env` o Git.
   -CostCenter FSG-ELRN-EPICO-PROD
 ```
 
-El token se solicita mediante entrada segura.
+El token se solicita mediante entrada segura. Para los repositorios privados debe ser un PAT classic con los scopes `repo` y `admin:repo_hook`; si la organización usa SSO, también debe autorizarse para `funsg-org`.
 5. Confirmar que la rama sea `feature/epico-deployment-readiness`, no `main`.
 
 Amplify se crea con auto-build desactivado; autorizarlo todavía no publica las páginas.
