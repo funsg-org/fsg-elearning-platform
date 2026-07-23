@@ -38,12 +38,20 @@ Import-EnvironmentFile (Join-Path $repositoryRoot 'config\naming.env') $loaded
 Import-EnvironmentFile (Join-Path $repositoryRoot 'config\tags.env') $loaded
 Import-EnvironmentFile $EnvironmentFile $loaded
 
-if ($env:ENVIRONMENT -notin @('qa','production')) { throw 'ENVIRONMENT en .env debe ser qa o production.' }
+if ($env:ENVIRONMENT -notin @('develop','qa','production')) { throw 'ENVIRONMENT en .env debe ser develop, qa o production.' }
 if ($EnvironmentName -and $EnvironmentName -ne $env:ENVIRONMENT) { throw "El parámetro '$EnvironmentName' no coincide con ENVIRONMENT='$($env:ENVIRONMENT)' en .env." }
 $EnvironmentName = $env:ENVIRONMENT
+$deploymentBranch = if ($loaded.ContainsKey('DEPLOYMENT_BRANCH') -and -not [string]::IsNullOrWhiteSpace($loaded.DEPLOYMENT_BRANCH)) {
+    [string]$loaded.DEPLOYMENT_BRANCH
+} else {
+    $EnvironmentName
+}
+if ($deploymentBranch -notmatch '^[A-Za-z0-9][A-Za-z0-9._/-]*$') { throw 'DEPLOYMENT_BRANCH contiene caracteres no permitidos para una rama Git.' }
 $derived = [ordered]@{
     RESOURCE_SUFFIX = $EnvironmentName
     RUNTIME_NODE_ENV = 'production'
+    DEPLOYMENT_BRANCH = $deploymentBranch
+    DEPLOYMENT_BRANCH_DOMAIN_PREFIX = $deploymentBranch.ToLowerInvariant() -replace '[^a-z0-9-]','-'
     SSM_BASE_PATH = "/$($env:RESOURCE_PREFIX)/$EnvironmentName"
     SERVERLESS_ACCESS_KEY_SECRET_ID = "$($env:RESOURCE_PREFIX)/$EnvironmentName/serverless/access-key"
     GITHUB_AMPLIFY_SECRET_ID = "$($env:RESOURCE_PREFIX)/$EnvironmentName/github/amplify-token"

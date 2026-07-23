@@ -21,11 +21,10 @@ $common = @{
 }
 Write-Contract 'infrastructure\parameters.example.json' 'infrastructure\parameters.json' $common
 
-$branch = if ($env:ENVIRONMENT -eq 'qa') { 'feature/epico-deployment-readiness' } else { 'main' }
 $amplify = $common.Clone()
 $amplify.EnvironmentTag = $env:ENVIRONMENT
-$amplify.DeploymentBranch = $branch
-$amplify.DeploymentBranchDomainPrefix = $branch -replace '[^a-z0-9-]','-'
+$amplify.DeploymentBranch = $env:DEPLOYMENT_BRANCH
+$amplify.DeploymentBranchDomainPrefix = $env:DEPLOYMENT_BRANCH_DOMAIN_PREFIX
 $amplify.GitHubAccessTokenSecretId = $env:GITHUB_AMPLIFY_SECRET_ID
 Write-Contract 'infrastructure\amplify-parameters.example.json' 'infrastructure\amplify-parameters.json' $amplify
 

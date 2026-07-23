@@ -1,15 +1,17 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$RoleArn,
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$AwsProfile,
     [string]$Region = 'us-east-1',
     [int]$DurationSeconds = 3600
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
-if ($RoleArn -notmatch "^arn:aws:iam::\d{12}:role/epico-deployment-$Environment$") { throw "RoleArn no corresponde al rol EPICO de $Environment." }
-$arguments = @('sts','assume-role','--role-arn',$RoleArn,'--role-session-name',"epico-$Environment-deployment",'--duration-seconds',$DurationSeconds,'--region',$Region,'--output','json')
+. (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -Quiet | Out-Null
+$expectedRoleName = "$($env:RESOURCE_PREFIX)-deployment-$Environment"
+if ($RoleArn -notmatch "^arn:aws:iam::\d{12}:role/$([regex]::Escape($expectedRoleName))$") { throw "RoleArn no corresponde al rol '$expectedRoleName'." }
+$arguments = @('sts','assume-role','--role-arn',$RoleArn,'--role-session-name',"$($env:RESOURCE_PREFIX)-$Environment-deployment",'--duration-seconds',$DurationSeconds,'--region',$Region,'--output','json')
 if ($AwsProfile) { $arguments += @('--profile',$AwsProfile) }
 $raw = & aws @arguments
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo asumir el rol de despliegue.' }

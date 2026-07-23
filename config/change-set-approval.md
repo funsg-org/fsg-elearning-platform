@@ -1,6 +1,6 @@
 # Aprobación de cambios CloudFormation
 
-Los stacks `epico-deployment-role-production`, `epico-amplify-production` y `epico-platform-production` ya no usan `cloudformation deploy` directamente. `scripts/invoke-cloudformation-change-set.ps1` crea un change set y muestra:
+Los stacks `<RESOURCE_PREFIX>-deployment-role-<ENVIRONMENT>`, `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>` y `<RESOURCE_PREFIX>-platform-<ENVIRONMENT>` ya no usan `cloudformation deploy` directamente. `scripts/invoke-cloudformation-change-set.ps1` crea un change set y muestra:
 
 - acción `Add`, `Modify`, `Remove` o `Import`;
 - Logical ID y tipo de recurso;
@@ -13,7 +13,7 @@ Sin `-ApproveExecution`, el change set queda creado pero no se ejecuta. Los orqu
 ./scripts/deploy-platform.ps1 -Execute -ApproveChangeSets `
   -AwsProfile epico `
   -ExpectedAccountId 123456789012 `
-  -DeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+  -DeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 ## Límite de Serverless

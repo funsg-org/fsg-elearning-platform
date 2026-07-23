@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$SourceBranch,
     [switch]$Execute,
     [switch]$ApproveChangeSets,
@@ -20,9 +20,9 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 & (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
-if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'qa' } else { 'main' } }
-if (-not $StackName) { $StackName = "epico-platform-$Environment" }
-if (-not $AmplifyStackName) { $AmplifyStackName = "epico-amplify-$Environment" }
+if (-not $SourceBranch) { $SourceBranch = $env:DEPLOYMENT_BRANCH }
+if (-not $StackName) { $StackName = "$($env:RESOURCE_PREFIX)-platform-$Environment" }
+if (-not $AmplifyStackName) { $AmplifyStackName = "$($env:RESOURCE_PREFIX)-amplify-$Environment" }
 if ([string]::IsNullOrWhiteSpace($ParametersFile)) {
     $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json'
 }
@@ -88,7 +88,7 @@ Write-Host "Stack Amplify: $AmplifyStackName"
 Write-Host "Región: $Region"
 
 if ($Region -ne 'us-east-1') {
-    throw 'La plataforma EPICO debe desplegarse en us-east-1.'
+    throw 'La plataforma debe desplegarse en us-east-1.'
 }
 if (-not (Test-Path -LiteralPath $templateFile -PathType Leaf)) {
     throw "No se encontró la plantilla compartida: $templateFile"

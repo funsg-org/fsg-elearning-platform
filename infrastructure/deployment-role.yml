@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Bootstrap IAM role used to deploy the EPICO platform with bounded permissions.
+Description: Bootstrap IAM role used to deploy one client environment with bounded permissions.
 
 Parameters:
   TrustedPrincipalArn:
@@ -11,6 +11,7 @@ Parameters:
   Environment:
     Type: String
     Default: production
+    AllowedValues: [develop, qa, production]
   SolutionTag: { Type: String, Default: E-Learning }
   ProjectTag: { Type: String, Default: FSG-Elearning }
   ClientTag: { Type: String, Default: EPICO }
@@ -40,7 +41,7 @@ Resources:
         - { Key: ManagedBy, Value: !Ref ManagedByTag }
         - { Key: CostCenter, Value: !Ref CostCenterTag }
       Policies:
-        - PolicyName: epico-platform-deployment
+        - PolicyName: !Sub '${ResourcePrefix}-platform-deployment'
           PolicyDocument:
             Version: '2012-10-17'
             Statement:

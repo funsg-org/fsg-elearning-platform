@@ -2,7 +2,7 @@
 
 ## Ambientes en una cuenta AWS
 
-La plataforma selecciona `qa` o `production` con una única variable `ENVIRONMENT` en el archivo local `.env`. Stacks, sufijos, secretos, tags y parámetros se derivan automáticamente. Consulte [config/multi-environment.md](config/multi-environment.md).
+La plataforma admite `develop`, `qa` y `production`. `ENVIRONMENT` selecciona el ambiente AWS y `DEPLOYMENT_BRANCH` selecciona de forma independiente la rama Git; el prefijo y las etiquetas identifican al cliente. Stacks, sufijos, secretos, tags y parámetros se derivan automáticamente. Consulte [config/multi-environment.md](config/multi-environment.md).
 
 Para una cuenta recién creada, comenzar por [config/client-aws-prerequisites-manual.md](config/client-aws-prerequisites-manual.md) y después continuar con el manual de instalación del cliente.
 
@@ -258,7 +258,7 @@ La validación comprueba variables obligatorias, formato de nombres, región `us
 Cuando la infraestructura compartida ya exista, generar y exigir su contrato antes de empaquetar:
 
 ```powershell
-.\scripts\export-cloudformation-outputs.ps1 -StackName epico-platform-production
+.\scripts\export-cloudformation-outputs.ps1 -StackName "$($env:RESOURCE_PREFIX)-platform-$($env:ENVIRONMENT)"
 .\scripts\validate-environment.ps1 -RequirePlatformOutputs
 ```
 

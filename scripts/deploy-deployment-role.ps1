@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [switch]$Execute,
     [switch]$ApproveChangeSets,
     [string]$AwsProfile,
@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 & (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
-if (-not $StackName) { $StackName = "epico-deployment-role-$Environment" }
+if (-not $StackName) { $StackName = "$($env:RESOURCE_PREFIX)-deployment-role-$Environment" }
 $templateFile = Join-Path $repositoryRoot 'infrastructure\deployment-role.yml'
 if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\deployment-role-parameters.json' }
 & (Join-Path $PSScriptRoot 'validate-deployment-role.ps1') -TemplateFile $templateFile -Region $Region -AwsProfile $AwsProfile

@@ -4,10 +4,16 @@ on:
   push:
     branches:
       - feature/epico-deployment-readiness
+      - develop
+      - qa
+      - production
   pull_request:
     branches:
       - main
       - master
+      - develop
+      - qa
+      - production
   workflow_dispatch:
 
 permissions:
@@ -19,7 +25,6 @@ concurrency:
 
 jobs:
   validate-orchestrator:
-    if: github.event_name != 'pull_request' || github.head_ref == 'feature/epico-deployment-readiness'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

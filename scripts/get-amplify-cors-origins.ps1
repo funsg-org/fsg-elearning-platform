@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$AmplifyOutputsFile
 )
 $ErrorActionPreference = 'Stop'

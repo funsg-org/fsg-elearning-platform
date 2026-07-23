@@ -1,56 +1,33 @@
-# Preparacion de Amplify Hosting
+# Amplify Hosting parametrizado
 
-`infrastructure/amplify-hosting.yml` declara `epico-client-production` y `epico-admin-production`. Ambas aplicaciones apuntan inicialmente a `feature/epico-deployment-readiness`; sus ramas nacen con `EnableAutoBuild: false` y `main` no se conecta en esta etapa.
+`infrastructure/amplify-hosting.yml` declara el portal público y la consola administrativa. El prefijo del cliente, ambiente y rama se reciben como parámetros; ninguna rama Git está asociada de forma fija a un ambiente.
 
-El ambiente AWS y la rama Git son parámetros independientes. Para `qa`, `DeploymentBranch` es `feature/epico-deployment-readiness` y su prefijo Amplify es `feature-epico-deployment-readiness`. Para `production`, después de aprobar el PR, la rama es `main`. No se debe crear una rama Git llamada `qa` solo por utilizar ese ambiente AWS.
+La selección procede del `.env`:
 
-## Credencial de GitHub
-
-1. Instalar y autorizar AWS Amplify GitHub App sobre ambos repositorios.
-2. Crear el token de conexion inicial requerido por Amplify.
-3. Guardarlo como JSON `{ "token": "valor-no-versionado" }` en Secrets Manager, por ejemplo bajo `epico/production/github/amplify-token`.
-
-CloudFormation recibe solamente el nombre o ARN del secreto mediante una referencia dinamica. El valor nunca debe guardarse en Git, `.env`, parametros en texto plano ni Outputs.
-
-El secreto puede inicializarse sin colocar el token en el historial del shell:
-
-```powershell
-./scripts/initialize-amplify-github-secret.ps1 -Execute -AwsProfile epico -ExpectedAccountId 123456789012 -CostCenter CODIGO_REAL
+```text
+ENVIRONMENT=qa
+DEPLOYMENT_BRANCH=qa
 ```
 
-El script pide un PAT classic de GitHub de forma oculta. Para repositorios privados debe incluir los scopes `repo` y `admin:repo_hook`, además de la autorización SSO de la organización si corresponde. No sobrescribe secretos existentes salvo que se indique explícitamente `-RotateExisting`.
+También es válido:
 
-## Orden futuro
-
-1. Validar sin crear recursos: `./scripts/validate-amplify-infrastructure.ps1`.
-2. Copiar `amplify-parameters.example.json` como `amplify-parameters.json` y completar `CostCenterTag`.
-3. Confirmar que `DeploymentBranchDomainPrefix` representa la rama reemplazando `/` por `-`, y crear el stack; sus Outputs entregan las URLs aun sin ejecutar builds.
-4. Aplicar esas URLs como orígenes CORS de la infraestructura compartida.
-5. Desplegar infraestructura y microservicios, y generar los mapas con `export-amplify-environments.ps1`.
-6. Vista previa: `./scripts/configure-amplify-branches.ps1`.
-7. Aplicar variables sin compilar: `./scripts/configure-amplify-branches.ps1 -Execute`.
-8. Tras aprobar la prueba, activar y lanzar el primer build de forma explicita:
-
-```powershell
-./scripts/configure-amplify-branches.ps1 -Execute -EnableAutoBuild -StartBuild
+```text
+ENVIRONMENT=production
+DEPLOYMENT_BRANCH=epico-production
 ```
 
-No se configura dominio personalizado; se usan los dominios predeterminados de Amplify.
+`sync-deployment-parameters.ps1` copia la rama a `DeploymentBranch` y deriva `DeploymentBranchDomainPrefix` reemplazando caracteres incompatibles con la URL. No editar `infrastructure/amplify-parameters.json` manualmente.
 
-## Bootstrap controlado
+Flujo:
 
-El comando siguiente solo valida y muestra las acciones:
+1. Cargar `.env` y ejecutar `sync-deployment-parameters.ps1`.
+2. Revisar el Change Set del stack `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>`.
+3. Confirmar que las dos aplicaciones utilizan exactamente `DEPLOYMENT_BRANCH`.
+4. Crear inicialmente las ramas con `EnableAutoBuild=false`.
+5. Exportar App IDs, rama y URLs con `export-amplify-outputs.ps1`.
+6. Configurar las variables de rama con `configure-amplify-branches.ps1`.
+7. Habilitar o iniciar builds solo después de desplegar infraestructura y microservicios.
 
-```powershell
-./scripts/deploy-amplify-bootstrap.ps1
-```
+Cambiar la rama requiere actualizar el stack Amplify, regenerar Outputs, volver a cargar las variables de rama y revisar CORS. Si cambia la URL resultante, también se actualiza `MEDIA_CORS_ALLOWED_ORIGINS`, el stack compartido y los seis microservicios de negocio.
 
-Después de autorizar Amplify GitHub App, crear el secreto, completar `amplify-parameters.json` y confirmar la cuenta destino:
-
-```powershell
-./scripts/deploy-amplify-bootstrap.ps1 -Execute -ApproveChangeSets -AwsProfile epico -ExpectedAccountId 123456789012
-```
-
-El modo de ejecución comprueba la identidad AWS, la existencia del secreto y que el token pueda leer ambos repositorios antes de crear el stack. Al terminar genera `config/amplify-outputs.env`, que está ignorado por Git.
-
-Normalmente no es necesario ejecutar el bootstrap por separado: `scripts/deploy-platform.ps1 -Execute` ya lo coordina al inicio y, al final, aplica las variables públicas manteniendo desactivados los builds.
+El token de GitHub se conserva en Secrets Manager. No se escribe en plantillas, JSON, `.env`, logs ni repositorios.

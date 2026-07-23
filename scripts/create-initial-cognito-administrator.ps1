@@ -2,8 +2,8 @@
 param(
     [Parameter(Mandatory = $true)][ValidatePattern('^[^@\s]+@[^@\s]+\.[^@\s]+$')][string]$Email,
     [Parameter(Mandatory = $true)][securestring]$Password,
-    [string]$Name = 'Administrador EPICO',
-    [ValidateSet('qa','production')][string]$Environment,
+    [string]$Name = 'Administrador',
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$OutputsFile,
     [string]$AwsProfile,
     [string]$Region = 'us-east-1',
@@ -47,7 +47,7 @@ $identityCall = Invoke-AwsNative (@('sts','get-caller-identity','--output','json
 if ($identityCall.ExitCode -ne 0) { throw "No se pudo consultar la identidad AWS: $($identityCall.Text)" }
 $identity = ($identityCall.Output -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw 'La identidad AWS activa no corresponde a la cuenta esperada.' }
-$expectedRoleName = "epico-deployment-$Environment"
+$expectedRoleName = "$($env:RESOURCE_PREFIX)-deployment-$Environment"
 if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/$([regex]::Escape($expectedRoleName))/") {
     throw "La identidad activa '$($identity.Arn)' no es una sesión del rol '$expectedRoleName'. Vuelva a ejecutar enter-deployment-role.ps1."
 }

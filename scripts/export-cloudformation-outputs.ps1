@@ -7,7 +7,7 @@ param(
     [string]$InputJsonFile,
 
     [string]$OutputFile,
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$AwsProfile,
     [string]$Region = 'us-east-1'
 )

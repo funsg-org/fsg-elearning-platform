@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ExpectedAccountId,
     [Parameter(Mandatory = $true)][string]$ExpectedDeploymentRoleArn,
     [string]$AwsProfile,
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$SourceBranch,
     [string]$Region = 'us-east-1',
     [string]$ParametersFile,
@@ -14,10 +14,8 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
 & (Join-Path $PSScriptRoot 'sync-deployment-parameters.ps1')
-if (-not $SourceBranch) { $SourceBranch = if ($Environment -eq 'qa') { 'feature/epico-deployment-readiness' } else { 'main' } }
 if (-not $ParametersFile) { $ParametersFile = Join-Path $repositoryRoot 'infrastructure\parameters.json' }
 if (-not $AmplifyParametersFile) { $AmplifyParametersFile = Join-Path $repositoryRoot 'infrastructure\amplify-parameters.json' }
-$expectedBranch = $SourceBranch
 $repositories = @(
     '.',
     'frontends\aprendamosgye_react',
@@ -33,6 +31,8 @@ $repositories = @(
 $services = $repositories | Where-Object { $_ -like 'services\*' }
 $checks = [System.Collections.Generic.List[string]]::new()
 . (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -Quiet | Out-Null
+if (-not $SourceBranch) { $SourceBranch = $env:DEPLOYMENT_BRANCH }
+$expectedBranch = $SourceBranch
 function Add-Check([string]$Message) { $checks.Add($Message) }
 function Assert-Command([string]$Name) {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) { throw "No se encontro la herramienta '$Name' en PATH." }
@@ -51,7 +51,7 @@ function Read-Parameters([string]$Path) {
 
 if ($Region -ne 'us-east-1') { throw 'La region obligatoria es us-east-1.' }
 if ($ExpectedAccountId -notmatch '^\d{12}$') { throw 'ExpectedAccountId debe contener 12 digitos.' }
-$requiredRoleArn = "arn:aws:iam::$ExpectedAccountId`:role/epico-deployment-$Environment"
+$requiredRoleArn = "arn:aws:iam::$ExpectedAccountId`:role/$($env:RESOURCE_PREFIX)-deployment-$Environment"
 if ($ExpectedDeploymentRoleArn -ne $requiredRoleArn) { throw "Para el ambiente '$Environment', ExpectedDeploymentRoleArn debe ser '$requiredRoleArn'." }
 foreach ($tool in @('git','node','npm','npx','aws')) { Assert-Command $tool }
 $nodeVersionText = (& node --version).Trim().TrimStart('v')
@@ -122,15 +122,15 @@ foreach ($key in @('ResourcePrefix','ResourceSuffix','SolutionTag','ProjectTag',
     if ($platform[$key] -ne $amplify[$key]) { throw "'$key' no coincide entre infraestructura y Amplify." }
 }
 if ($platform.CostCenterTag -eq 'PENDING') { throw 'CostCenterTag continua en PENDING.' }
-if ($platform.ResourcePrefix -ne 'epico' -or $platform.ResourceSuffix -ne $Environment) { throw "El destino esperado debe usar epico/$Environment." }
+if ($platform.ResourcePrefix -ne $env:RESOURCE_PREFIX -or $platform.ResourceSuffix -ne $Environment) { throw "El destino esperado debe usar $($env:RESOURCE_PREFIX)/$Environment." }
 if ($platform.Environment -ne $Environment) { throw "El archivo de plataforma no corresponde a $Environment." }
 if ($platform.Environment -ne $amplify.EnvironmentTag) { throw 'Environment y EnvironmentTag no coinciden entre ambos stacks.' }
 if ($amplify.DeploymentBranch -ne $expectedBranch) { throw 'DeploymentBranch no coincide con la rama de preparacion.' }
 $expectedDomainPrefix = $expectedBranch -replace '[^a-z0-9-]','-'
 if ($amplify.DeploymentBranchDomainPrefix -ne $expectedDomainPrefix) { throw "DeploymentBranchDomainPrefix debe ser '$expectedDomainPrefix'." }
 if (-not $amplify.GitHubAccessTokenSecretId) { throw 'Falta GitHubAccessTokenSecretId.' }
-if ($amplify.GitHubAccessTokenSecretId -notmatch "^epico/$Environment/") { throw 'El secreto GitHub pertenece a otro ambiente.' }
-if ($env:SERVERLESS_ACCESS_KEY_SECRET_ID -notmatch "^epico/$Environment/") { throw 'El secreto Serverless pertenece a otro ambiente.' }
+if ($amplify.GitHubAccessTokenSecretId -notmatch "^$([regex]::Escape($env:RESOURCE_PREFIX))/$Environment/") { throw 'El secreto GitHub pertenece a otro ambiente o cliente.' }
+if ($env:SERVERLESS_ACCESS_KEY_SECRET_ID -notmatch "^$([regex]::Escape($env:RESOURCE_PREFIX))/$Environment/") { throw 'El secreto Serverless pertenece a otro ambiente o cliente.' }
 Add-Check 'Parametros, tags, prefijo, sufijo y rama consistentes'
 
 $awsBase = @('--region',$Region)

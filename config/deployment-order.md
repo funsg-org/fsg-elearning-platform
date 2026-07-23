@@ -28,14 +28,14 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
   -ApproveChangeSets `
   -AwsProfile epico `
   -ExpectedAccountId 123456789012 `
-  -DeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+  -DeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 Antes de cualquier escritura, `-Execute` ejecuta automáticamente `scripts/test-deployment-readiness.ps1`. El preflight puede ejecutarse también de forma independiente para diagnosticar la estación y las credenciales:
 
 ```powershell
-.\scripts\enter-deployment-role.ps1 -RoleArn arn:aws:iam::123456789012:role/epico-deployment-production -AwsProfile epico
-.\scripts\test-deployment-readiness.ps1 -ExpectedAccountId 123456789012 -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+.\scripts\enter-deployment-role.ps1 -RoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT> -AwsProfile epico
+.\scripts\test-deployment-readiness.ps1 -ExpectedAccountId 123456789012 -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 La opción `-SkipRemoteChecks` omite únicamente `git ls-remote`; no omite identidad AWS, secreto, parámetros ni plantillas.
@@ -51,8 +51,8 @@ Los siete microservicios fijan el paquete npm `serverless` en `4.39.0` y declara
 - No activa auto-build ni inicia publicaciones Amplify.
 - No crea ni almacena Access Keys.
 - Se detiene ante el primer error; no continúa con dependencias incompletas.
-- Exige la rama `feature/epico-deployment-readiness` y un repositorio limpio.
-- No confunde el ambiente AWS con la rama Git: `qa` despliega desde `feature/epico-deployment-readiness`; `production` despliega desde `main` después del PR aprobado.
+- Exige que la rama actual coincida con `DEPLOYMENT_BRANCH` y que el repositorio esté limpio.
+- Mantiene independientes el ambiente AWS (`develop`, `qa` o `production`) y la rama Git; la rama puede ser la base del ambiente o una variante específica del cliente.
 - Compara la identidad AWS activa con `-ExpectedAccountId` antes de crear recursos.
 - Rechaza `CostCenterTag=PENDING` y URLs que no sean orígenes HTTPS predeterminados de Amplify.
 

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Shared EPICO e-learning infrastructure (Cognito, Secrets Manager, S3 and CloudFront).
+Description: Shared e-learning infrastructure for one client environment (Cognito, Secrets Manager, S3 and CloudFront).
 
 Parameters:
   ResourcePrefix:
@@ -13,7 +13,7 @@ Parameters:
   Environment:
     Type: String
     Default: production
-    AllowedValues: [development, qa, staging, production]
+    AllowedValues: [develop, qa, production]
   SolutionTag:
     Type: String
     Default: E-Learning
@@ -404,7 +404,7 @@ Outputs:
     Description: AWS account that owns the platform.
     Value: !Ref AWS::AccountId
   CognitoUserPoolId:
-    Description: EPICO Cognito User Pool ID.
+    Description: Cognito User Pool ID del ambiente.
     Value: !Ref UserPool
   CognitoClientId:
     Description: Public Cognito App Client ID for frontends and API token validation.

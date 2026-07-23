@@ -1,6 +1,6 @@
 # Validacion continua
 
-El workflow `.github/workflows/deployment-readiness.yml` se ejecuta en cada push de `feature/epico-deployment-readiness`, en sus PR hacia `main` o `master`, y manualmente.
+El workflow `.github/workflows/deployment-readiness.yml` se ejecuta en cada push de `feature/epico-deployment-readiness`, `develop`, `qa` o `production`; también en pull requests hacia las ramas de promoción y manualmente.
 
 Comprueba sin credenciales AWS:
 

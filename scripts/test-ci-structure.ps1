@@ -2,7 +2,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$expectedBranch = 'feature/epico-deployment-readiness'
+$deploymentBranches = @('develop','qa','production')
 $requiredFiles = @(
     '.gitmodules',
     '.env.example',
@@ -55,8 +55,8 @@ foreach ($requiredCloudFormationAction in @('DescribeStackResource','DescribeSta
     }
 }
 $configureAmplifyScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/configure-amplify-branches.ps1') -Raw
-if ($configureAmplifyScript -notmatch "feature/epico-deployment-readiness" -or $configureAmplifyScript -notmatch "rama obsoleta") {
-    throw 'La configuración Amplify debe rechazar un stack QA que todavía apunte a una rama Git obsoleta.'
+if ($configureAmplifyScript -notmatch 'DEPLOYMENT_BRANCH' -or $configureAmplifyScript -match "feature/epico-deployment-readiness") {
+    throw 'La configuración Amplify debe validar DEPLOYMENT_BRANCH sin una rama fija de cliente.'
 }
 $administratorScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/create-initial-cognito-administrator.ps1') -Raw
 if ($administratorScript -notmatch 'UserNotFoundException' -or $administratorScript -notmatch 'assumed-role') {
@@ -91,7 +91,9 @@ if ($configuredUrls | Where-Object { $_ -notmatch '^https://github\.com/funsg-or
 if ($configuredBranches.Count -ne 10 -or ($configuredBranches | Where-Object { $_ -notin @('main','master') })) { throw 'Cada submodulo debe declarar su rama estable main o master.' }
 
 $workflowText = Get-Content -LiteralPath (Join-Path $repositoryRoot '.github/workflows/deployment-readiness.yml') -Raw
-if ($workflowText -notmatch [regex]::Escape($expectedBranch)) { throw 'El workflow no referencia la rama de preparacion.' }
+foreach ($deploymentBranch in $deploymentBranches) {
+    if ($workflowText -notmatch "(?m)^\s+- $([regex]::Escape($deploymentBranch))\s*$") { throw "El workflow no cubre la rama '$deploymentBranch'." }
+}
 if ($workflowText -notmatch 'infrastructure/deployment-role\.yml') { throw 'El workflow no valida la plantilla del rol de despliegue.' }
 if ($workflowText -match '(?im)aws-access-key-id|aws-secret-access-key|role-to-assume|cloudformation deploy|serverless deploy') { throw 'El workflow estructural no puede contener credenciales ni comandos de despliegue.' }
 Write-Host "Estructura CI valida: $($trackedScripts.Count) scripts, 10 submodulos y un selector .env." -ForegroundColor Green

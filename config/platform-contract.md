@@ -27,7 +27,7 @@ La infraestructura debe publicar exactamente estos Outputs:
 ## Archivo generado localmente
 
 ```powershell
-.\scripts\export-cloudformation-outputs.ps1 -StackName epico-platform-production
+.\scripts\export-cloudformation-outputs.ps1 -StackName "$($env:RESOURCE_PREFIX)-platform-$($env:ENVIRONMENT)"
 ```
 
 Opcionalmente se puede indicar `-AwsProfile epico`. El archivo real `config/platform-outputs.env` está ignorado por Git; el archivo `.example` documenta únicamente el formato.

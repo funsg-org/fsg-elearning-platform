@@ -10,23 +10,26 @@ Copiar `.env.example` como `.env` y seleccionar el ambiente:
 
 ```dotenv
 ENVIRONMENT=qa
+DEPLOYMENT_BRANCH=qa
 ```
 
-No es necesario pasar `-Environment`: todos los scripts leen `.env`. Para cambiar a producción, cerrar la terminal, cambiar únicamente `ENVIRONMENT=production` y abrir una terminal nueva. Los `parameters.json` se regeneran; los Outputs generados conservan el ambiente en su nombre para evitar mezclas.
+Los ambientes permitidos son `develop`, `qa` y `production`. `DEPLOYMENT_BRANCH` es independiente y puede ser la rama base del ambiente o una variante de cliente como `epico-production`. Si se omite, adopta el valor de `ENVIRONMENT`.
+
+Para cambiar de ambiente, cliente o rama, cerrar la terminal, modificar los valores correspondientes y abrir una terminal nueva. Los JSON locales se regeneran; los Outputs conservan el ambiente en su nombre para evitar mezclas. Nunca modificar ni eliminar un `.env` o JSON local existente sin autorización de su propietario.
 
 ## 3. Información que debe recibir FSG
 
 ### Para la Fase A — todavía no existen Cognito, S3 ni CloudFront
 
 - Account ID de 12 dígitos y región `us-east-1`.
-- ARN de `epico-deployment-<ambiente>`.
+- ARN de `<RESOURCE_PREFIX>-deployment-<ambiente>`.
 - Método SSO temporal; excepcionalmente Access Keys de un usuario temporal dedicado.
 - CostCenter definitivo.
 - Ventana autorizada de despliegue.
 
 ### Para la Fase B — después de la infraestructura compartida
 
-- Confirmación `CREATE_COMPLETE` de `epico-platform-<ambiente>`.
+- Confirmación `CREATE_COMPLETE` de `<RESOURCE_PREFIX>-platform-<ambiente>`.
 - Outputs no sensibles de Cognito, S3 y CloudFront, o permiso para consultarlos con AWS CLI.
 - Correo y nombre del administrador inicial.
 - Copia no sensible de los parámetros aprobados.
@@ -65,14 +68,15 @@ Comprobar el Account ID antes de continuar.
 ```powershell
 git clone --recurse-submodules https://github.com/funsg-org/fsg-elearning-platform.git
 Set-Location fsg-elearning-platform
-git switch feature/epico-deployment-readiness
+$deploymentBranch = 'qa' # usar el mismo valor que DEPLOYMENT_BRANCH
+git switch $deploymentBranch
 git submodule sync --recursive
 git submodule update --init --recursive
 git status
 git submodule status
 ```
 
-Para esta instalación, `ENVIRONMENT=qa` no implica una rama Git llamada `qa`. El código de prueba permanece en `feature/epico-deployment-readiness`. Solo producción utilizará `main`, después de aprobar el PR correspondiente.
+Confirmar que el padre y cada repositorio privado estén en la rama indicada por `DEPLOYMENT_BRANCH`. Las ramas base recomendadas son `develop`, `qa` y `production`; `main` queda fuera del flujo mientras continúe conectado a instalaciones heredadas. Una variante específica debe usar el mismo nombre en todos los repositorios afectados.
 
 El código permanece en infraestructura FSG y no se copia al cliente.
 
@@ -81,7 +85,7 @@ El código permanece en infraestructura FSG y no se copia al cliente.
 ```powershell
 . .\scripts\load-environment.ps1 -Quiet
 $accountId = aws sts get-caller-identity --query Account --output text --profile epico-provider
-$deploymentRoleArn = "arn:aws:iam::$accountId`:role/epico-deployment-$env:ENVIRONMENT"
+$deploymentRoleArn = "arn:aws:iam::$accountId`:role/$($env:RESOURCE_PREFIX)-deployment-$($env:ENVIRONMENT)"
 
 .\scripts\enter-deployment-role.ps1 `
   -RoleArn $deploymentRoleArn `
@@ -89,7 +93,7 @@ $deploymentRoleArn = "arn:aws:iam::$accountId`:role/epico-deployment-$env:ENVIRO
 aws sts get-caller-identity
 ```
 
-Confirmar `assumed-role/epico-deployment-<ambiente>` y la cuenta esperada.
+Confirmar `assumed-role/<RESOURCE_PREFIX>-deployment-<ambiente>` y la cuenta esperada.
 
 El comando `enter-deployment-role.ps1` y todos los comandos de las fases siguientes deben ejecutarse en **la misma ventana de PowerShell**. Las credenciales STS se guardan solamente en la memoria de ese proceso. Antes de crear secretos, comprobar otra vez:
 
@@ -97,7 +101,7 @@ El comando `enter-deployment-role.ps1` y todos los comandos de las fases siguien
 aws sts get-caller-identity --query Arn --output text
 ```
 
-El resultado debe contener `assumed-role/epico-deployment-<ambiente>/`. Si muestra `user/`, `AWSReservedSSO_` u otro rol, detenerse y volver a ejecutar `enter-deployment-role.ps1`.
+El resultado debe contener `assumed-role/<RESOURCE_PREFIX>-deployment-<ambiente>/`. Si muestra `user/`, `AWSReservedSSO_` u otro rol, detenerse y volver a ejecutar `enter-deployment-role.ps1`.
 
 ## 6. Fase A: preparar Amplify sin publicar
 
@@ -174,18 +178,19 @@ Crear las dos aplicaciones y sus ramas con auto-build desactivado:
 
 Antes de crear el change set, el script consulta ambos repositorios con el token almacenado. Si alguno devuelve 404, verificar los scopes `repo` y `admin:repo_hook`, la autorización SSO y que AWS Amplify GitHub App tenga seleccionados ambos repositorios.
 
-Si un intento anterior dejó `epico-amplify-qa` en `ROLLBACK_COMPLETE`, corregir primero el token y luego eliminar únicamente ese stack fallido:
+Si un intento anterior dejó el stack Amplify actual en `ROLLBACK_COMPLETE`, corregir primero el token y luego eliminar únicamente ese stack fallido:
 
 ```powershell
-aws cloudformation delete-stack --stack-name epico-amplify-qa --region us-east-1
-aws cloudformation wait stack-delete-complete --stack-name epico-amplify-qa --region us-east-1
+$amplifyStack = "$($env:RESOURCE_PREFIX)-amplify-$($env:ENVIRONMENT)"
+aws cloudformation delete-stack --stack-name $amplifyStack --region us-east-1
+aws cloudformation wait stack-delete-complete --stack-name $amplifyStack --region us-east-1
 ```
 
 La eliminación del stack requiere confirmación consciente. No ejecutar estos comandos si el stack contiene recursos válidos que deban conservarse.
 
 1. Confirmar que se generó `config/amplify-outputs.<ambiente>.env` y que contiene las dos URLs `amplifyapp.com`.
 2. Entregar al cliente las URLs, nombre del stack y confirmación de que no se inició ningún build.
-3. **DETENERSE.** No ejecutar todavía los pasos siguientes. El cliente debe completar CORS y crear `epico-platform-<ambiente>`.
+3. **DETENERSE.** No ejecutar todavía los pasos siguientes. El cliente debe completar CORS y crear `<RESOURCE_PREFIX>-platform-<ambiente>`.
 
 Después de comprobar que ambas aplicaciones Amplify acceden correctamente a los repositorios, registrar la fecha de expiración. Revocar o rotar el token cuando termine su vigencia o deje de ser necesario; no reutilizarlo para otros clientes.
 
@@ -198,7 +203,7 @@ Opción recomendada, exportarlos directamente desde CloudFormation:
 ```powershell
 . .\scripts\load-environment.ps1 -Quiet
 .\scripts\export-cloudformation-outputs.ps1 `
-  -StackName "epico-platform-$env:ENVIRONMENT"
+  -StackName "$($env:RESOURCE_PREFIX)-platform-$($env:ENVIRONMENT)"
 ```
 
 Como alternativa, crear localmente `config/platform-outputs.<ambiente>.env`, sin confirmar en Git:
@@ -237,7 +242,7 @@ El script solicita la clave y crea `epico/production/serverless/access-key` sin 
 
 ## 9. Preflight de proyectos
 
-Antes del preflight, confirmar que el cliente haya desplegado la versión vigente de `infrastructure/deployment-role.yml`. Si la plantilla cambió después de crear el rol, actualizar primero `epico-deployment-role-<ambiente>` desde una terminal nueva autenticada solamente con `epico-bootstrap`; no hacerlo desde una sesión que ya asumió `epico-deployment-<ambiente>`:
+Antes del preflight, confirmar que el cliente haya desplegado la versión vigente de `infrastructure/deployment-role.yml`. Si la plantilla cambió después de crear el rol, actualizar primero `<RESOURCE_PREFIX>-deployment-role-<ambiente>` desde una terminal nueva autenticada solamente con el perfil bootstrap; no hacerlo desde una sesión que ya asumió `<RESOURCE_PREFIX>-deployment-<ambiente>`:
 
 ```powershell
 aws sso login --profile epico-bootstrap
@@ -256,7 +261,7 @@ Crear localmente, a partir de los ejemplos, `infrastructure/parameters.json` y `
 ```powershell
 .\scripts\test-deployment-readiness.ps1 `
   -ExpectedAccountId 123456789012 `
-  -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+  -ExpectedDeploymentRoleArn "arn:aws:iam::123456789012:role/$($env:RESOURCE_PREFIX)-deployment-$($env:ENVIRONMENT)"
 ```
 
 Verificar rama, repositorios limpios, Serverless 4.39.0, secreto, outputs, región y cuenta.
@@ -267,7 +272,7 @@ En cada servicio ejecutar `npm ci --ignore-scripts`. Si uno falla, detener la ve
 
 ## 11. Desplegar los siete microservicios
 
-Antes de entrar al primer repositorio, cargar la configuración desde la raíz. Este comando no modifica `.env`; deriva `RUNTIME_NODE_ENV=production` y conserva `ENVIRONMENT` como el nombre del stage (`qa` o `production`):
+Antes de entrar al primer repositorio, cargar la configuración desde la raíz. Este comando no modifica `.env`; deriva `RUNTIME_NODE_ENV=production` y conserva `ENVIRONMENT` como el nombre del stage (`develop`, `qa` o `production`):
 
 ```powershell
 . .\scripts\load-environment.ps1 -Quiet
@@ -299,13 +304,13 @@ Si cambia una URL de Amplify o se modifica `MEDIA_CORS_ALLOWED_ORIGINS`, volver 
 
 Las variables no se inventan ni se copian manualmente desde API Gateway:
 
-1. `config/platform-outputs.<ambiente>.env` proviene de los Outputs de `epico-platform-<ambiente>` y contiene Cognito, CloudFront, bucket y grupo administrativo.
+1. `config/platform-outputs.<ambiente>.env` proviene de los Outputs de `<RESOURCE_PREFIX>-platform-<ambiente>` y contiene Cognito, CloudFront, bucket y grupo administrativo.
 2. `config/service-outputs.<ambiente>.env` proviene de los siete stacks `ms-epico-<servicio>-<ambiente>` y contiene las siete URLs de API Gateway.
 3. `export-amplify-environments.ps1` combina ambos contratos y genera los mapas que se cargarán en las ramas Amplify.
 
 ```powershell
 .\scripts\export-cloudformation-outputs.ps1 `
-  -StackName "epico-platform-$env:ENVIRONMENT"
+  -StackName "$($env:RESOURCE_PREFIX)-platform-$($env:ENVIRONMENT)"
 .\scripts\export-serverless-outputs.ps1
 .\scripts\validate-environment.ps1 -RequirePlatformOutputs -RequireServiceOutputs
 .\scripts\export-amplify-environments.ps1
@@ -340,7 +345,8 @@ Ejecutar primero la vista previa:
 ```powershell
 .\scripts\configure-amplify-branches.ps1 `
   -Environment $env:ENVIRONMENT `
-  -StackName "epico-amplify-$env:ENVIRONMENT"
+  -DeploymentBranch $env:DEPLOYMENT_BRANCH `
+  -StackName "$($env:RESOURCE_PREFIX)-amplify-$($env:ENVIRONMENT)"
 ```
 
 El script consulta los Outputs del stack y debe mostrar:
@@ -348,34 +354,20 @@ El script consulta los Outputs del stack y debe mostrar:
 - `cliente`: App ID, rama y `config/amplify-client-<ambiente>-env.json`.
 - `administrador`: App ID, rama y `config/amplify-admin-<ambiente>-env.json`.
 
-QA debe apuntar a `feature/epico-deployment-readiness`; producción apunta a `main` después del PR aprobado. Detenerse si el nombre de rama no corresponde.
+Ambas aplicaciones deben apuntar exactamente a `DEPLOYMENT_BRANCH`. Detenerse si la rama no existe en GitHub o un Output muestra otro valor.
 
-#### Recuperar un stack QA que todavía apunta a `qa`
+#### Cambiar la rama desplegada
 
-No crear una rama Git `qa` para satisfacer el stack. Ese nombre correspondía a una configuración anterior incorrecta. Si la vista previa o los logs indican `Remote branch qa not found`, proceder así:
+1. Publicar primero la rama nueva, con el mismo nombre, en los repositorios padre, portal, administrador y microservicios involucrados.
+2. Cambiar `DEPLOYMENT_BRANCH` en `.env`; no editar el JSON generado.
+3. Abrir una terminal nueva y ejecutar `sync-deployment-parameters.ps1`.
+4. Actualizar `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>` mediante Change Set.
+5. Regenerar `config/amplify-outputs.<ambiente>.env` y confirmar las dos claves `*_AMPLIFY_BRANCH`.
+6. Si cambian las URLs, entregar los orígenes nuevos al cliente para actualizar CORS del stack compartido.
+7. Redesplegar los seis microservicios de negocio con el nuevo CORS.
+8. Regenerar mapas, cargar variables de rama y publicar nuevamente los frontends.
 
-1. Confirmar que `infrastructure/amplify-parameters.json` tenga:
-
-```text
-DeploymentBranch=feature/epico-deployment-readiness
-DeploymentBranchDomainPrefix=feature-epico-deployment-readiness
-```
-
-2. Actualizar el stack Amplify y revisar que el Change Set sustituya las ramas, no las aplicaciones:
-
-```powershell
-.\scripts\deploy-amplify-bootstrap.ps1 `
-  -Environment qa `
-  -Execute -ApproveChangeSets `
-  -ExpectedAccountId $accountId
-```
-
-3. El script regenera `config/amplify-outputs.qa.env`. Confirmar que ambas claves `*_AMPLIFY_BRANCH` indiquen `feature/epico-deployment-readiness` y que las URLs comiencen con `https://feature-epico-deployment-readiness.`.
-4. Las URLs Amplify cambian al cambiar la rama. El proveedor entrega las dos URLs nuevas al cliente y se detiene.
-5. El cliente actualiza `MEDIA_CORS_ALLOWED_ORIGINS` con ambas URLs, regenera los parámetros compartidos, revisa y ejecuta un Change Set de `epico-platform-qa`.
-6. Solo después de confirmar el CORS actualizado, el proveedor vuelve a ejecutar los puntos 12 y 13.2. Las variables de rama deben cargarse nuevamente antes del siguiente build.
-
-El intento fallido no requiere eliminar las aplicaciones Amplify. Una vez sustituida la rama del stack, los jobs siguientes clonarán la rama real.
+No crear una rama accidental para encubrir una diferencia de configuración. La rama desplegada siempre procede explícitamente de `DEPLOYMENT_BRANCH`.
 
 ### 13.2 Cargar las variables en las ramas Amplify
 
@@ -384,7 +376,7 @@ La vía recomendada es el script, no un `.env` y no la escritura manual:
 ```powershell
 .\scripts\configure-amplify-branches.ps1 `
   -Environment $env:ENVIRONMENT `
-  -StackName "epico-amplify-$env:ENVIRONMENT" `
+  -StackName "$($env:RESOURCE_PREFIX)-amplify-$($env:ENVIRONMENT)" `
   -Execute
 ```
 
@@ -396,7 +388,7 @@ Para verificarlo en la consola web:
 2. Abrir `epico-admin-<ambiente>` o `epico-client-<ambiente>`.
 3. Elegir **Hosting** → **Environment variables** → **Manage variables**.
 4. Confirmar las claves del JSON correspondiente y su rama.
-5. No añadir secretos ni aplicar accidentalmente valores de QA a producción.
+5. No añadir secretos ni aplicar accidentalmente valores de otro cliente o ambiente.
 
 La consola se utiliza para verificar o como contingencia. Una corrección manual debe reflejarse después en la automatización para evitar divergencias.
 
@@ -405,7 +397,7 @@ Referencia oficial: [Configurar variables de entorno en AWS Amplify Hosting](htt
 ### 13.3 Verificar por AWS CLI
 
 ```powershell
-$amplifyStack = "epico-amplify-$env:ENVIRONMENT"
+$amplifyStack = "$($env:RESOURCE_PREFIX)-amplify-$($env:ENVIRONMENT)"
 
 $adminAppId = aws cloudformation describe-stacks `
   --stack-name $amplifyStack --region us-east-1 `
@@ -471,8 +463,8 @@ $clientBranch = aws cloudformation describe-stacks `
 $clientAppId
 $clientBranch
 
-if ($clientBranch -ne 'feature/epico-deployment-readiness' -and $env:ENVIRONMENT -eq 'qa') {
-  throw "La rama cliente '$clientBranch' no corresponde a QA."
+if ($clientBranch -ne $env:DEPLOYMENT_BRANCH) {
+  throw "La rama cliente '$clientBranch' no corresponde a DEPLOYMENT_BRANCH='$($env:DEPLOYMENT_BRANCH)'."
 }
 
 aws amplify get-branch `
@@ -518,7 +510,7 @@ $initialPassword = Read-Host 'Clave inicial' -AsSecureString
   -ExpectedAccountId 123456789012
 ```
 
-El comando debe ejecutarse con una sesión vigente de `epico-deployment-<ambiente>`. En la primera ejecución, `admin-get-user` devuelve internamente `UserNotFoundException`; el script lo interpreta como alta nueva, crea el usuario con mensajes suprimidos, establece la contraseña permanente y lo agrega al grupo administrativo. Cualquier otro error de consulta detiene el proceso y muestra la causa de AWS.
+El comando debe ejecutarse con una sesión vigente de `<RESOURCE_PREFIX>-deployment-<ambiente>`. En la primera ejecución, `admin-get-user` devuelve internamente `UserNotFoundException`; el script lo interpreta como alta nueva, crea el usuario con mensajes suprimidos, establece la contraseña permanente y lo agrega al grupo administrativo. Cualquier otro error de consulta detiene el proceso y muestra la causa de AWS.
 
 Entregar usuario y clave por canales separados. No registrar la contraseña. Solicitar cambio inmediato.
 
@@ -537,9 +529,9 @@ Probar salud de APIs, consola administrativa, portal público, rechazo de usuari
 
 ## 17. Procedimiento interno para futuras actualizaciones
 
-La promoción obligatoria es QA → aceptación del cliente → producción. Deben ser dos ventanas y dos permisos temporales diferenciados. Registrar el commit aprobado en QA y verificar que sea el mismo que se despliega en producción; no reconstruir desde una rama con cambios adicionales.
+La promoción obligatoria es `develop` → `qa` → aceptación del cliente → `production`. Cada paso usa su rama, ambiente y autorización temporal. Registrar el commit aprobado en cada etapa y verificar que sea el mismo que se promueve; no reconstruir desde una rama con cambios adicionales.
 
-### 16.1 Registrar y acotar la solicitud
+### 17.1 Registrar y acotar la solicitud
 
 Crear un ticket interno que enlace la solicitud aprobada del cliente y defina:
 
@@ -552,7 +544,7 @@ Crear un ticket interno que enlace la solicitud aprobada del cliente y defina:
 
 No iniciar desarrollo o despliegue con alcance ambiguo.
 
-### 16.2 Preparar la versión en repositorios privados
+### 17.2 Preparar la versión en repositorios privados
 
 1. Actualizar las ramas estables locales.
 2. Crear una rama de feature/corrección con nombre común en los repositorios afectados.
@@ -565,7 +557,7 @@ No iniciar desarrollo o despliegue con alcance ambiguo.
 
 El cliente recibe el alcance y la versión funcional, no hashes internos ni acceso al código salvo obligación contractual expresa.
 
-### 16.3 Solicitar acceso temporal nuevo
+### 17.3 Solicitar acceso temporal nuevo
 
 Solicitar al cliente una nueva asignación SSO temporal para la ventana. Nunca reutilizar credenciales copiadas de una intervención anterior. Verificar:
 
@@ -574,9 +566,9 @@ aws sso login --profile epico-provider
 aws sts get-caller-identity --profile epico-provider
 ```
 
-Luego asumir `epico-deployment-production` y confirmar Account ID/región. Si faltan permisos, documentar la acción IAM exacta y enviar al cliente un Change Set de la plantilla; no pedir permisos administrativos genéricos.
+Luego asumir `<RESOURCE_PREFIX>-deployment-<ambiente>` y confirmar Account ID/región. Si faltan permisos, documentar la acción IAM exacta y enviar al cliente un Change Set de la plantilla; no pedir permisos administrativos genéricos.
 
-### 16.4 Construir el plan de cambio
+### 17.4 Construir el plan de cambio
 
 Clasificar el despliegue:
 
@@ -588,7 +580,7 @@ Clasificar el despliegue:
 
 Documentar orden, duración, verificación y punto de no retorno.
 
-### 16.5 Preflight y recuperación
+### 17.5 Preflight y recuperación
 
 Antes de escribir en AWS:
 
@@ -600,7 +592,7 @@ Antes de escribir en AWS:
 - Confirmar PITR de tablas y versionado S3.
 - Guardar la referencia del último despliegue exitoso.
 
-### 16.6 Desplegar selectivamente
+### 17.6 Desplegar selectivamente
 
 Durante la ventana:
 
@@ -615,7 +607,7 @@ Durante la ventana:
 
 No ejecutar el despliegue completo si el alcance aprobado es parcial, salvo dependencia técnica documentada.
 
-### 16.7 Reversión
+### 17.7 Reversión
 
 Si falla una verificación:
 
@@ -629,7 +621,7 @@ Si falla una verificación:
 
 Registrar tiempos, causa, recursos afectados y decisión del cliente cuando existan datos involucrados.
 
-### 16.8 Entrega y cierre
+### 17.8 Entrega y cierre
 
 Después de pruebas técnicas, entregar al cliente:
 
@@ -641,3 +633,172 @@ Después de pruebas técnicas, entregar al cliente:
 - Recomendación de observación posterior.
 
 Solicitar aceptación funcional y revocación del permiso temporal. Cerrar sesión AWS, limpiar variables/perfiles temporales, proteger manifiestos y actualizar la bitácora interna de FSG.
+
+## 18. Fase final: desinstalar completamente un ambiente
+
+Esta fase es destructiva y no forma parte de una actualización ni de un rollback. Se ejecuta únicamente con una solicitud escrita del cliente que identifique `AWS Account ID`, `RESOURCE_PREFIX`, `ENVIRONMENT`, ventana y autorización para eliminar datos. Repetirla por separado para `develop`, `qa` y `production`; nunca utilizar comodines entre clientes o ambientes.
+
+### 18.1 Aprobar respaldo y alcance
+
+Antes de borrar:
+
+1. Confirmar si deben exportarse usuarios Cognito, objetos/versiones S3 o tablas DynamoDB.
+2. Entregar y verificar los respaldos acordados.
+3. Registrar Outputs, App IDs, nombres de stacks, buckets, User Pool, secretos y tablas.
+4. Cargar `.env` y comprobar cuenta, rol, prefijo y ambiente:
+
+```powershell
+. .\scripts\load-environment.ps1 -Quiet
+aws sts get-caller-identity
+
+$resourcePrefix = $env:RESOURCE_PREFIX
+$environment = $env:ENVIRONMENT
+$amplifyStack = "$resourcePrefix-amplify-$environment"
+$platformStack = "$resourcePrefix-platform-$environment"
+$roleStack = "$resourcePrefix-deployment-role-$environment"
+```
+
+Detenerse si algún valor no coincide con la autorización. La retención de datos existe precisamente para impedir que eliminar un stack borre silenciosamente información.
+
+### 18.2 Eliminar frontends Amplify
+
+Conservar el secreto GitHub hasta terminar este punto:
+
+```powershell
+aws cloudformation delete-stack `
+  --stack-name $amplifyStack --region $env:AWS_REGION
+aws cloudformation wait stack-delete-complete `
+  --stack-name $amplifyStack --region $env:AWS_REGION
+```
+
+Confirmar en Amplify que las dos aplicaciones del ambiente ya no existen. Esto no elimina ramas ni repositorios GitHub.
+
+### 18.3 Eliminar microservicios
+
+Cargar la clave Serverless y eliminar en orden inverso al despliegue:
+
+```powershell
+.\scripts\import-serverless-access-key.ps1 `
+  -SecretId $env:SERVERLESS_ACCESS_KEY_SECRET_ID `
+  -Region $env:AWS_REGION
+
+$services = @(
+  'ms-aprendamosgye-videos',
+  'ms-aprendamosgye-users',
+  'ms-aprendamosgye-subscriptions',
+  'ms-aprendamosgye-metrics',
+  'ms-aprendamosgye-menu',
+  'ms-aprendamosgye-course',
+  'ms-aprendamosgye-auth'
+)
+
+foreach ($service in $services) {
+  Push-Location "services\$service"
+  npx serverless remove --stage $environment --region $env:AWS_REGION
+  $removeExitCode = $LASTEXITCODE
+  Pop-Location
+  if ($removeExitCode -ne 0) { throw "Falló la eliminación de $service" }
+}
+```
+
+`serverless remove` está prohibido como mecanismo de rollback, pero es correcto en esta fase de desinstalación expresamente autorizada. Las tablas con `DeletionPolicy: Retain` continuarán existiendo y se atienden en el punto 18.5.
+
+### 18.4 Eliminar infraestructura compartida
+
+Antes de borrar el stack, conservar localmente sus Outputs para identificar los recursos retenidos:
+
+```powershell
+$platform = aws cloudformation describe-stacks `
+  --stack-name $platformStack --region $env:AWS_REGION `
+  --query 'Stacks[0].Outputs' --output json | ConvertFrom-Json
+
+$userPoolId = ($platform | Where-Object OutputKey -eq 'CognitoUserPoolId').OutputValue
+$mediaBucket = ($platform | Where-Object OutputKey -eq 'MediaBucketName').OutputValue
+$clientSecretId = ($platform | Where-Object OutputKey -eq 'CognitoClientSecretId').OutputValue
+
+aws cloudformation delete-stack `
+  --stack-name $platformStack --region $env:AWS_REGION
+aws cloudformation wait stack-delete-complete `
+  --stack-name $platformStack --region $env:AWS_REGION
+```
+
+CloudFront puede tardar varios minutos en deshabilitar y eliminar la distribución. No continuar si el stack termina en `DELETE_FAILED`; revisar sus eventos y resolver el recurso exacto.
+
+### 18.5 Eliminar recursos retenidos
+
+CloudFormation conserva deliberadamente Cognito, el secreto del cliente confidencial, el bucket multimedia y diez tablas DynamoDB. Después de validar los respaldos:
+
+1. Vaciar el bucket S3 incluyendo **todas las versiones y marcadores de eliminación**; comprobar que quede vacío y eliminarlo.
+2. Eliminar el User Pool identificado por `$userPoolId`.
+3. Eliminar el secreto identificado por `$clientSecretId`.
+4. Enumerar las tablas cuyo nombre termine en `-$environment`, confirmar sus tags `Client` y `Environment`, y eliminar únicamente las pertenecientes a `$resourcePrefix`.
+
+Ejemplos para los recursos ya identificados:
+
+```powershell
+aws cognito-idp delete-user-pool `
+  --user-pool-id $userPoolId --region $env:AWS_REGION
+
+aws secretsmanager delete-secret `
+  --secret-id $clientSecretId `
+  --force-delete-without-recovery `
+  --region $env:AWS_REGION
+```
+
+Para S3 y DynamoDB se recomienda usar la consola AWS durante esta operación excepcional: mostrar versiones, tags y nombre completo antes de confirmar. No ejecutar eliminaciones por prefijos parciales, globs ni resultados sin revisar.
+
+### 18.6 Eliminar secretos operativos y residuos
+
+Solo después de eliminar Amplify y todos los microservicios:
+
+```powershell
+aws secretsmanager delete-secret `
+  --secret-id $env:GITHUB_AMPLIFY_SECRET_ID `
+  --force-delete-without-recovery `
+  --region $env:AWS_REGION
+
+aws secretsmanager delete-secret `
+  --secret-id $env:SERVERLESS_ACCESS_KEY_SECRET_ID `
+  --force-delete-without-recovery `
+  --region $env:AWS_REGION
+```
+
+Revisar y eliminar, si existen y coinciden exactamente con cliente/ambiente:
+
+- parámetros bajo `/$resourcePrefix/$environment`;
+- log groups de Lambdas y API Gateway;
+- buckets de despliegue Serverless;
+- alarmas, dashboards o suscripciones creadas fuera de CloudFormation;
+- versiones de Lambda o capas no asociadas.
+
+Revocar también el token o autorización GitHub utilizada por Amplify si no sirve para otro ambiente autorizado.
+
+### 18.7 Eliminar el rol temporal al final
+
+Cerrar la sesión del rol de despliegue. En una terminal nueva, iniciar sesión con el perfil bootstrap del cliente y eliminar el stack del rol:
+
+```powershell
+aws sso login --profile epico-bootstrap
+aws cloudformation delete-stack `
+  --stack-name $roleStack `
+  --profile epico-bootstrap `
+  --region $env:AWS_REGION
+aws cloudformation wait stack-delete-complete `
+  --stack-name $roleStack `
+  --profile epico-bootstrap `
+  --region $env:AWS_REGION
+```
+
+El nombre del perfil es local y puede variar; no es un nombre de recurso AWS.
+
+### 18.8 Verificación de cuenta limpia
+
+Confirmar con el cliente:
+
+- no existen stacks `<RESOURCE_PREFIX>-*‑<ENVIRONMENT>` ni `ms-<RESOURCE_PREFIX>-*‑<ENVIRONMENT>`;
+- no existen aplicaciones Amplify, APIs, Lambdas, distribuciones, User Pools, buckets, tablas, secretos, parámetros ni roles del ambiente;
+- la búsqueda por tags `Client=<TAG_CLIENT>` y `Environment=<ENVIRONMENT>` no devuelve recursos de la solución;
+- GitHub no conserva autorizaciones innecesarias;
+- los respaldos y el acta de eliminación tienen ubicación y retención acordadas.
+
+Entregar un inventario final de lo eliminado y de cualquier elemento conservado por decisión expresa del cliente. Solo entonces cerrar y revocar el acceso temporal.

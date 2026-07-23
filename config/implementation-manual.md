@@ -89,7 +89,7 @@ arn:aws:iam::123456789012:user/bootstrap-admin
 Hay dos niveles:
 
 - Identidad bootstrap: autorizada temporalmente por el cliente y utilizada por FSG una sola vez para crear el rol limitado.
-- `epico-deployment-production`: rol con permisos para desplegar recursos EPICO en `us-east-1`.
+- `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`: rol con permisos acotados al cliente y ambiente en `us-east-1`.
 
 No desplegar permanentemente como root ni con `AdministratorAccess`.
 
@@ -98,7 +98,8 @@ No desplegar permanentemente como root ni con `AdministratorAccess`.
 ```powershell
 git clone --recurse-submodules https://github.com/funsg-org/fsg-elearning-platform.git
 Set-Location fsg-elearning-platform
-git switch feature/epico-deployment-readiness
+$deploymentBranch = 'qa' # usar el mismo valor que DEPLOYMENT_BRANCH
+git switch $deploymentBranch
 git submodule sync --recursive
 git submodule update --init --recursive
 git status
@@ -142,19 +143,19 @@ Ejecución, después de revisar:
 Resultado esperado:
 
 ```text
-arn:aws:iam::123456789012:role/epico-deployment-production
+arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 ## 9. Asumir el rol
 
 ```powershell
 .\scripts\enter-deployment-role.ps1 `
-  -RoleArn arn:aws:iam::123456789012:role/epico-deployment-production `
+  -RoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT> `
   -AwsProfile epico-bootstrap
 aws sts get-caller-identity
 ```
 
-Debe aparecer una sesión `assumed-role/epico-deployment-production` en la cuenta correcta.
+Debe aparecer una sesión `assumed-role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>` en la cuenta correcta.
 
 ## 10. Crear el secreto operativo de Serverless
 
@@ -192,7 +193,7 @@ Se guarda en `epico/production/serverless/access-key`; nunca en `.env` o Git.
 ```
 
 El token se solicita mediante entrada segura. Para los repositorios privados debe ser un PAT classic con los scopes `repo` y `admin:repo_hook`; si la organización usa SSO, también debe autorizarse para `funsg-org`.
-5. Confirmar que la rama sea `feature/epico-deployment-readiness`, no `main`.
+5. Confirmar que la rama coincida con `DEPLOYMENT_BRANCH` en el padre y los repositorios involucrados; no usar `main` mientras continúe asociado a la instalación heredada.
 
 Amplify se crea con auto-build desactivado; autorizarlo todavía no publica las páginas.
 
@@ -217,7 +218,7 @@ El responsable de seguridad debe aceptar MFA desactivado o solicitar una fase po
 ```powershell
 .\scripts\test-deployment-readiness.ps1 `
   -ExpectedAccountId 123456789012 `
-  -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+  -ExpectedDeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 Corregir todos los errores. No continuar con cuenta, secreto, parámetros, rama, CORS o CostCenter inválidos.
@@ -234,7 +235,7 @@ Corregir todos los errores. No continuar con cuenta, secreto, parámetros, rama,
 .\scripts\deploy-platform.ps1 `
   -Execute -ApproveChangeSets `
   -ExpectedAccountId 123456789012 `
-  -DeploymentRoleArn arn:aws:iam::123456789012:role/epico-deployment-production
+  -DeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 El proceso valida, instala dependencias, crea Amplify sin builds, obtiene sus URLs, crea infraestructura compartida, exporta outputs, despliega secuencialmente siete servicios, captura recuperación, exporta APIs y configura variables `VITE_*`. Se detiene ante el primer error.

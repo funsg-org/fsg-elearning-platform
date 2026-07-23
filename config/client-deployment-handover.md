@@ -35,9 +35,9 @@ No forman parte de la entrega: repositorios Git, código fuente, scripts de desp
 
 | Componente | Nombre/identificador | Estado |
 | --- | --- | --- |
-| Stack de rol | `epico-deployment-production` | `<estado>` |
-| Stack Amplify | `epico-amplify-production` | `<estado>` |
-| Stack compartido | `epico-platform-production` | `<estado>` |
+| Stack de rol | `<RESOURCE_PREFIX>-deployment-role-<ENVIRONMENT>` | `<estado>` |
+| Stack Amplify | `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>` | `<estado>` |
+| Stack compartido | `<RESOURCE_PREFIX>-platform-<ENVIRONMENT>` | `<estado>` |
 | Stack Auth | `<nombre>` | `<estado>` |
 | Stack Course | `<nombre>` | `<estado>` |
 | Stack Menu | `<nombre>` | `<estado>` |

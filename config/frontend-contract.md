@@ -18,7 +18,7 @@ El portal público agrega `VITE_BASE_PATH=/`. El administrativo agrega `VITE_COG
 ## Flujo de generación
 
 ```powershell
-.\scripts\export-cloudformation-outputs.ps1 -StackName epico-platform-production
+.\scripts\export-cloudformation-outputs.ps1 -StackName "$($env:RESOURCE_PREFIX)-platform-$($env:ENVIRONMENT)"
 .\scripts\export-serverless-outputs.ps1
 .\scripts\export-amplify-environments.ps1
 ```

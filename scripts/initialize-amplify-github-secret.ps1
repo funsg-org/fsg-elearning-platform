@@ -2,7 +2,7 @@
 param(
     [switch]$Execute,
     [switch]$RotateExisting,
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
     [string]$SecretId,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
@@ -11,7 +11,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
-if (-not $SecretId) { $SecretId = "epico/$Environment/github/amplify-token" }
+. (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -Quiet | Out-Null
+if (-not $SecretId) { $SecretId = $env:GITHUB_AMPLIFY_SECRET_ID }
 if ($Region -ne 'us-east-1') { throw 'El secreto de Amplify debe prepararse en us-east-1.' }
 if (-not $Execute) {
     Write-Host "Secreto a crear: $SecretId"
@@ -27,8 +28,9 @@ $identityRaw = & aws sts get-caller-identity --output json @awsBase
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo verificar la identidad AWS.' }
 $identity = ($identityRaw -join [Environment]::NewLine) | ConvertFrom-Json
 if ($identity.Account -ne $ExpectedAccountId) { throw "Cuenta activa $($identity.Account); se esperaba $ExpectedAccountId." }
-if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/epico-deployment-$Environment/") {
-    throw "La identidad activa '$($identity.Arn)' no es una sesión de epico-deployment-$Environment. Ejecute enter-deployment-role.ps1 en esta misma terminal."
+$expectedRoleName = "$($env:RESOURCE_PREFIX)-deployment-$Environment"
+if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/$([regex]::Escape($expectedRoleName))/") {
+    throw "La identidad activa '$($identity.Arn)' no es una sesión de $expectedRoleName. Ejecute enter-deployment-role.ps1 en esta misma terminal."
 }
 
 $previousErrorActionPreference = $ErrorActionPreference
@@ -60,12 +62,12 @@ try {
             Description='Token de conexion inicial entre AWS Amplify y GitHub.'
             SecretString=$secretPayload
             Tags=@(
-            @{ Key='Solution'; Value='E-Learning' },
-            @{ Key='Project'; Value='FSG-Elearning' },
-            @{ Key='Client'; Value='EPICO' },
+            @{ Key='Solution'; Value=$env:TAG_SOLUTION },
+            @{ Key='Project'; Value=$env:TAG_PROJECT },
+            @{ Key='Client'; Value=$env:TAG_CLIENT },
             @{ Key='Environment'; Value=$Environment },
-            @{ Key='Owner'; Value='FSG' },
-            @{ Key='ManagedBy'; Value='IaC' },
+            @{ Key='Owner'; Value=$env:TAG_OWNER },
+            @{ Key='ManagedBy'; Value=$env:TAG_MANAGED_BY },
             @{ Key='CostCenter'; Value=$CostCenter }
             )
         }

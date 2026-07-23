@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Amplify Hosting para los frontends publico y administrativo de EPICO.
+Description: Amplify Hosting para los frontends publico y administrativo de un cliente.
 
 Parameters:
   ResourcePrefix:
@@ -10,10 +10,10 @@ Parameters:
     Default: production
   DeploymentBranch:
     Type: String
-    Default: feature/epico-deployment-readiness
+    Default: production
   DeploymentBranchDomainPrefix:
     Type: String
-    Default: feature-epico-deployment-readiness
+    Default: production
     AllowedPattern: '^[a-z0-9][a-z0-9-]*$'
   ClientRepository:
     Type: String
@@ -27,7 +27,10 @@ Parameters:
   SolutionTag: { Type: String, Default: E-Learning }
   ProjectTag: { Type: String, Default: FSG-Elearning }
   ClientTag: { Type: String, Default: EPICO }
-  EnvironmentTag: { Type: String, Default: production }
+  EnvironmentTag:
+    Type: String
+    Default: production
+    AllowedValues: [develop, qa, production]
   OwnerTag: { Type: String, Default: FSG }
   ManagedByTag: { Type: String, Default: IaC }
   CostCenterTag: { Type: String }

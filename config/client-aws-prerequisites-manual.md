@@ -103,7 +103,7 @@ Puede verificarse por cualquiera de estas rutas:
 6. Iniciar sesión en la URL del portal con el usuario creado.
 7. Abrir la pestaña **Accounts**, seleccionar la cuenta y confirmar que aparece el rol `AdministratorAccess` o `EpicoBootstrapAdministrator`.
 
-Para una cuenta nueva de prueba se utiliza `AdministratorAccess` únicamente durante la creación del rol limitado `epico-deployment-qa`. Debe retirarse al finalizar el bootstrap. En una organización empresarial, el equipo de seguridad puede sustituirlo por una política bootstrap personalizada.
+Para una cuenta nueva de prueba se utiliza `AdministratorAccess` únicamente durante la creación del rol limitado `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`. Debe retirarse al finalizar el bootstrap. En una organización empresarial, el equipo de seguridad puede sustituirlo por una política bootstrap personalizada.
 
 ### 4.7 Problemas frecuentes
 
@@ -219,6 +219,7 @@ Para la primera prueba:
 
 ```dotenv
 ENVIRONMENT=qa
+DEPLOYMENT_BRANCH=qa
 TAG_COST_CENTER=FSG-ELRN-EPICO-QA
 TRUSTED_PRINCIPAL_ARN=arn:aws:iam::<ACCOUNT_ID>:role/<RUTA-Y-NOMBRE-DEL-ROL>
 CLIENT_CODE=epico
@@ -226,7 +227,7 @@ RESOURCE_PREFIX=epico
 TAG_CLIENT=EPICO
 ```
 
-El archivo `.env` es local, no contiene contraseñas y no se entrega de vuelta a FSG. Para producción se cambia posteriormente solo `ENVIRONMENT` y el código de costo correspondiente; el ARN puede conservarse si el cliente autoriza la misma identidad.
+El archivo `.env` es local, no contiene contraseñas y no se entrega de vuelta a FSG. Los ambientes admitidos son `develop`, `qa` y `production`; `DEPLOYMENT_BRANCH` selecciona de forma independiente la versión Git autorizada. Para cambiar de ambiente se revisan ambos valores y el centro de costo; el ARN puede conservarse si el cliente autoriza la misma identidad.
 
 ## 11. Validación final de prerrequisitos
 
@@ -245,13 +246,13 @@ Antes de continuar debe cumplirse:
 - `TRUSTED_PRINCIPAL_ARN` de tipo IAM `role` o `user`, nunca STS.
 - Región de despliegue `us-east-1`.
 - Paquete SHA-256 íntegro.
-- `ENVIRONMENT=qa` y CostCenter definitivo.
+- `ENVIRONMENT` en `develop`, `qa` o `production`, `DEPLOYMENT_BRANCH` acordada y CostCenter definitivo.
 
 Con estos puntos completos, continuar con el **Manual de instalación de infraestructura para el cliente EPICO**.
 
 ## 12. Cierre del permiso bootstrap
 
-Después de crear y comprobar `epico-deployment-qa`:
+Después de crear y comprobar `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`:
 
 1. Retirar `AdministratorAccess` del usuario o Permission Set temporal.
 2. Si se utilizó IAM user con Access Keys, desactivarlas y eliminarlas.

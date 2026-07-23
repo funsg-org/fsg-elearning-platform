@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$EnvironmentName,
+    [ValidateSet('develop','qa','production')][string]$EnvironmentName,
     [string]$EnvironmentFile,
     [string]$OutputsFile,
     [string]$ServiceOutputsFile,
@@ -30,6 +30,8 @@ $requiredVariables = @(
     'RESOURCE_PREFIX',
     'RESOURCE_SUFFIX',
     'ENVIRONMENT',
+    'DEPLOYMENT_BRANCH',
+    'DEPLOYMENT_BRANCH_DOMAIN_PREFIX',
     'AWS_REGION',
     'SSM_BASE_PATH',
     'TAG_SOLUTION',
@@ -112,6 +114,14 @@ foreach ($variable in @('PROJECT_CODE', 'CLIENT_CODE', 'RESOURCE_PREFIX', 'RESOU
 
 if ($env:AWS_REGION -ne 'us-east-1') {
     $errors.Add("AWS_REGION debe ser us-east-1 para esta solución; valor recibido: '$($env:AWS_REGION)'.")
+}
+
+if ($env:DEPLOYMENT_BRANCH -notmatch '^[A-Za-z0-9][A-Za-z0-9._/-]*$') {
+    $errors.Add("DEPLOYMENT_BRANCH no es un nombre de rama permitido: '$($env:DEPLOYMENT_BRANCH)'.")
+}
+$expectedBranchDomainPrefix = $env:DEPLOYMENT_BRANCH.ToLowerInvariant() -replace '[^a-z0-9-]','-'
+if ($env:DEPLOYMENT_BRANCH_DOMAIN_PREFIX -ne $expectedBranchDomainPrefix) {
+    $errors.Add("DEPLOYMENT_BRANCH_DOMAIN_PREFIX debe ser '$expectedBranchDomainPrefix'.")
 }
 
 foreach ($variable in @('RESOURCE_SUFFIX', 'ENVIRONMENT', 'TAG_ENVIRONMENT')) {

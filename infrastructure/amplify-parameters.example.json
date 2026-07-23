@@ -1,8 +1,8 @@
 [
   { "ParameterKey": "ResourcePrefix", "ParameterValue": "epico" },
   { "ParameterKey": "ResourceSuffix", "ParameterValue": "production" },
-  { "ParameterKey": "DeploymentBranch", "ParameterValue": "feature/epico-deployment-readiness" },
-  { "ParameterKey": "DeploymentBranchDomainPrefix", "ParameterValue": "feature-epico-deployment-readiness" },
+  { "ParameterKey": "DeploymentBranch", "ParameterValue": "qa" },
+  { "ParameterKey": "DeploymentBranchDomainPrefix", "ParameterValue": "qa" },
   { "ParameterKey": "ClientRepository", "ParameterValue": "https://github.com/funsg-org/aprendamosgye_react" },
   { "ParameterKey": "AdminRepository", "ParameterValue": "https://github.com/funsg-org/ms-aprendamosgye-admin-web" },
   { "ParameterKey": "GitHubAccessTokenSecretId", "ParameterValue": "epico/production/github/amplify-token" },

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('qa','production')][string]$Environment,
+    [ValidateSet('develop','qa','production')][string]$Environment,
+    [string]$DeploymentBranch,
     [switch]$Execute,
     [switch]$EnableAutoBuild,
     [switch]$StartBuild,
@@ -13,7 +14,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $Environment) { $Environment = & (Join-Path $PSScriptRoot 'get-deployment-environment.ps1') }
-if (-not $StackName) { $StackName = "epico-amplify-$Environment" }
+. (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -Quiet | Out-Null
+if (-not $DeploymentBranch) { $DeploymentBranch = $env:DEPLOYMENT_BRANCH }
+if (-not $StackName) { $StackName = "$($env:RESOURCE_PREFIX)-amplify-$Environment" }
 if (-not $ClientEnvironmentFile) { $ClientEnvironmentFile = Join-Path $repositoryRoot "config\amplify-client-$Environment-env.json" }
 if (-not $AdminEnvironmentFile) { $AdminEnvironmentFile = Join-Path $repositoryRoot "config\amplify-admin-$Environment-env.json" }
 foreach ($path in @($ClientEnvironmentFile,$AdminEnvironmentFile)) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Falta el mapa: $path" } }
@@ -28,11 +31,11 @@ $targets = @(
     @{ Name='cliente'; AppId=$outputs.ClientAmplifyAppId; Branch=$outputs.ClientAmplifyBranch; File=$ClientEnvironmentFile },
     @{ Name='administrador'; AppId=$outputs.AdminAmplifyAppId; Branch=$outputs.AdminAmplifyBranch; File=$AdminEnvironmentFile }
 )
-$expectedBranch = if ($Environment -eq 'qa') { 'feature/epico-deployment-readiness' } else { 'main' }
+$expectedBranch = $DeploymentBranch
 foreach ($target in $targets) {
     if (-not $target.AppId -or -not $target.Branch) { throw "Faltan Outputs para $($target.Name)." }
     if ($target.Branch -ne $expectedBranch) {
-        throw "El stack '$StackName' apunta la aplicación $($target.Name) a la rama obsoleta '$($target.Branch)'; para $Environment debe usar '$expectedBranch'. Actualice primero el stack Amplify y regenere sus Outputs."
+        throw "El stack '$StackName' apunta la aplicación $($target.Name) a la rama '$($target.Branch)'; DEPLOYMENT_BRANCH exige '$expectedBranch'. Actualice primero el stack Amplify y regenere sus Outputs."
     }
     Write-Host "$($target.Name): app $($target.AppId), rama $($target.Branch), variables $($target.File)"
 }

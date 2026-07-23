@@ -12,15 +12,19 @@ Las secciones marcadas **“Corresponde al proveedor de la solución”** son ej
 
 ## 2. Selección obligatoria del ambiente
 
-La cuenta puede alojar dos instalaciones aisladas: `qa` y `production`. Existe un solo archivo local `.env`.
+La cuenta puede alojar tres instalaciones aisladas: `develop`, `qa` y `production`. Existe un solo archivo local `.env` activo por ejecución.
 
 ```powershell
 Copy-Item .env.example .env
-# Editar .env y definir ENVIRONMENT=qa para la primera instalación.
+# Editar .env y definir ambiente y rama para la primera instalación.
+ENVIRONMENT=develop
+DEPLOYMENT_BRANCH=develop
 .\scripts\sync-deployment-parameters.ps1
 ```
 
-Para producción se cambia únicamente `ENVIRONMENT=production` en `.env`, se abre una terminal nueva y se vuelven a ejecutar los scripts. Los parámetros se regeneran automáticamente. Los stacks serán `epico-*-qa` y `epico-*-production`. Centros de costo propuestos: `FSG-ELRN-EPICO-QA` y `FSG-ELRN-EPICO-PROD`.
+`ENVIRONMENT` acepta únicamente `develop`, `qa` o `production`. `DEPLOYMENT_BRANCH` es independiente y puede usar la rama base correspondiente o una variante acordada como `epico-production`. Si se omite, adopta el mismo valor del ambiente.
+
+Para cambiar de ambiente se editan ambos valores según la versión aprobada, se abre una terminal nueva y se vuelven a ejecutar los scripts. Los parámetros se regeneran automáticamente. Los stacks usan `<RESOURCE_PREFIX>-*‑<ENVIRONMENT>`. Centros de costo propuestos: `FSG-ELRN-EPICO-DEV`, `FSG-ELRN-EPICO-QA` y `FSG-ELRN-EPICO-PROD`.
 
 ## 3. Responsabilidades
 
@@ -110,7 +114,7 @@ Opción recomendada:
 
 1. Crear una identidad temporal FSG en IAM Identity Center.
 2. Darle acceso a la cuenta destino.
-3. Permitirle asumir posteriormente `epico-deployment-production`.
+3. Permitirle asumir posteriormente `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`.
 4. Entregar URL de inicio SSO, región SSO, nombre de cuenta y nombre del rol; FSG inicia su propia sesión.
 5. Deshabilitar esa asignación al finalizar.
 
@@ -124,7 +128,8 @@ Alternativa excepcional: usuario IAM exclusivo de despliegue con Access Keys rot
 
 El script genera los tres `parameters.json` locales. No se editan directamente. Antes de continuar, `.env` debe contener:
 
-- `ENVIRONMENT=qa` para la primera prueba.
+- `ENVIRONMENT=develop`, `qa` o `production`.
+- `DEPLOYMENT_BRANCH` acordada para ese ambiente.
 - `TAG_COST_CENTER=FSG-ELRN-EPICO-QA`.
 - `TRUSTED_PRINCIPAL_ARN` con el ARN IAM obtenido en prerrequisitos.
 - `MEDIA_CORS_ALLOWED_ORIGINS=PENDING` hasta que el proveedor entregue las URLs Amplify en el paso 10.
@@ -156,7 +161,7 @@ Después de revisar el Change Set:
 Registrar el output:
 
 ```text
-arn:aws:iam::123456789012:role/epico-deployment-qa
+arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
 
 ## 10. Corresponde al proveedor: preparar Amplify sin publicar
@@ -216,7 +221,8 @@ Crear el Change Set sin ejecutarlo:
 
 ```powershell
 $environment = .\scripts\get-deployment-environment.ps1
-$platformStack = "epico-platform-$environment"
+. .\scripts\load-environment.ps1 -Quiet
+$platformStack = "$($env:RESOURCE_PREFIX)-platform-$environment"
 
 $changeSetName = .\scripts\invoke-cloudformation-change-set.ps1 `
   -StackName $platformStack `
@@ -234,7 +240,7 @@ $changeSetName
 $changeSetName.GetType().FullName
 ```
 
-El tipo esperado es `System.String` y el valor debe comenzar con `review-epico-platform-<ambiente>-`. No continuar si aparecen textos como `FormatEntryData`, `FormatStartData` o varios valores.
+El tipo esperado es `System.String` y el valor debe comenzar con `review-<RESOURCE_PREFIX>-platform-<ambiente>-`. No continuar si aparecen textos como `FormatEntryData`, `FormatStartData` o varios valores.
 
 Como recuperación de una ejecución realizada con una versión anterior del script, extraer únicamente el nombre generado en esa misma ejecución:
 
@@ -313,7 +319,7 @@ Verificar además:
 El cliente entrega a FSG por canal aprobado:
 
 - Account ID y región.
-- ARN de `epico-deployment-production`.
+- ARN de `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`.
 - Datos de acceso SSO temporal o, excepcionalmente, credenciales del usuario temporal dedicado.
 - Outputs no sensibles de CloudFormation listados arriba.
 - URLs Amplify.
@@ -364,7 +370,7 @@ Activar en Billing las etiquetas definidas por usuario y revisar Cost Explorer c
 Después de aceptación:
 
 1. Deshabilitar la asignación SSO temporal o eliminar Access Keys temporales.
-2. Mantener el rol `epico-deployment-production` solo si habrá soporte futuro; su confianza debe apuntar a una identidad controlada.
+2. Mantener el rol `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>` solo si habrá soporte futuro; su confianza debe apuntar a una identidad controlada.
 3. Confirmar que FSG no conserva credenciales del cliente.
 4. Mantener procedimientos de soporte para autorizar nuevas sesiones temporales.
 
@@ -372,7 +378,7 @@ Después de aceptación:
 
 Cada actualización se trata como una nueva intervención controlada. El permiso temporal usado en la instalación inicial no debe permanecer abierto indefinidamente.
 
-Toda actualización se prueba primero con el rol `epico-deployment-qa`. Solo después de la aceptación se abre otra autorización temporal para `epico-deployment-production` y se promueve exactamente la versión aprobada. Una autorización para QA no debe interpretarse como autorización para producción.
+Toda actualización se promueve por `develop`, luego `qa` y finalmente `production`, con la rama configurada para cada ambiente. Cada ambiente requiere su rol y autorización temporal; una autorización para un ambiente no autoriza los demás.
 
 ### 21.1 Solicitud y aprobación
 
@@ -390,7 +396,7 @@ FSG devuelve alcance, componentes que cambiarán, riesgos, duración estimada, p
 
 ### 21.2 Crear un nuevo acceso temporal
 
-El cliente crea una nueva sesión o asignación temporal siguiendo la sección 7. Se recomienda reutilizar el rol limitado `epico-deployment-production`, pero autorizar nuevamente a una identidad temporal FSG.
+El cliente crea una nueva sesión o asignación temporal siguiendo la sección 7. Se recomienda reutilizar el rol limitado `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`, pero autorizar nuevamente a una identidad temporal FSG.
 
 Antes de la ventana, entregar únicamente:
 
@@ -457,3 +463,18 @@ Después de la aceptación:
 3. FSG entrega inventario de componentes actualizados, fecha, resultado y observaciones.
 4. El cliente actualiza el acta operativa y conserva la aprobación.
 5. Ambas partes registran pendientes o deuda técnica para una intervención futura.
+
+## 22. Desinstalación definitiva de un ambiente
+
+La desinstalación no es una actualización ni una reversión. El cliente debe solicitarla por escrito e identificar cuenta, cliente, ambiente (`develop`, `qa` o `production`), fecha y tratamiento de los datos.
+
+Antes de autorizar:
+
+1. Definir respaldos de Cognito, S3 y DynamoDB.
+2. Confirmar si algún dato debe conservarse y durante cuánto tiempo.
+3. Autorizar temporalmente al proveedor para eliminar los recursos privados.
+4. Designar a un administrador del cliente para revisar y aprobar las eliminaciones retenidas.
+
+El proveedor elimina Amplify y los siete stacks Serverless. El stack compartido conserva deliberadamente User Pool, secreto Cognito, bucket multimedia y tablas DynamoDB; el cliente y el proveedor verifican sus nombres, tags y respaldos antes de eliminarlos explícitamente. El rol temporal se elimina al final desde el perfil bootstrap del cliente.
+
+La cuenta se considera limpia únicamente cuando la revisión de stacks y la búsqueda por tags `Client` y `Environment` no encuentran recursos de la solución. El proveedor entrega el inventario de eliminación; el cliente revoca accesos AWS y GitHub y conserva el acta y respaldos acordados.

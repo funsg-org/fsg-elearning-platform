@@ -2,7 +2,7 @@
 
 `infrastructure/deployment-role.yml` es una plantilla bootstrap separada. Debe ejecutarla una sola vez un administrador de la cuenta, indicando como `TrustedPrincipalArn` el usuario o rol autorizado para asumirla.
 
-El rol resultante se llama `epico-deployment-production`, dura como máximo cuatro horas y restringe recursos regionales a `us-east-1` y nombres `epico`/`ms-epico` cuando AWS admite permisos por ARN. Las APIs globales o de creación que no soportan esa restricción se enumeran explícitamente con `Resource: '*'`.
+El rol resultante se llama `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`, dura como máximo cuatro horas y restringe recursos regionales a `us-east-1` y nombres derivados del cliente cuando AWS admite permisos por ARN. Las APIs globales o de creación que no soportan esa restricción se enumeran explícitamente con `Resource: '*'`.
 
 ## Validación sin despliegue
 
