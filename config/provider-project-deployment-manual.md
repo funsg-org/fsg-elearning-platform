@@ -439,7 +439,32 @@ Repetir `get-job` hasta obtener `SUCCEED`. Si termina en `FAILED` o `CANCELLED`,
 
 ### 13.5 Publicar después el portal público
 
+No reutilizar `$clientAppId` ni `$clientBranch` de un intento anterior. Consultarlos nuevamente desde el stack inmediatamente antes del build y validar la rama:
+
 ```powershell
+$clientAppId = aws cloudformation describe-stacks `
+  --stack-name $amplifyStack --region us-east-1 `
+  --query "Stacks[0].Outputs[?OutputKey=='ClientAmplifyAppId'].OutputValue | [0]" `
+  --output text
+
+$clientBranch = aws cloudformation describe-stacks `
+  --stack-name $amplifyStack --region us-east-1 `
+  --query "Stacks[0].Outputs[?OutputKey=='ClientAmplifyBranch'].OutputValue | [0]" `
+  --output text
+
+$clientAppId
+$clientBranch
+
+if ($clientBranch -ne 'feature/epico-deployment-readiness' -and $env:ENVIRONMENT -eq 'qa') {
+  throw "La rama cliente '$clientBranch' no corresponde a QA."
+}
+
+aws amplify get-branch `
+  --app-id $clientAppId --branch-name $clientBranch `
+  --region us-east-1 `
+  --query "branch.[branchName,enableAutoBuild]" `
+  --output table
+
 $clientJob = aws amplify start-job `
   --app-id $clientAppId --branch-name $clientBranch `
   --job-type RELEASE --region us-east-1 `
