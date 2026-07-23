@@ -58,6 +58,10 @@ $configureAmplifyScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 's
 if ($configureAmplifyScript -notmatch "feature/epico-deployment-readiness" -or $configureAmplifyScript -notmatch "rama obsoleta") {
     throw 'La configuración Amplify debe rechazar un stack QA que todavía apunte a una rama Git obsoleta.'
 }
+$administratorScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/create-initial-cognito-administrator.ps1') -Raw
+if ($administratorScript -notmatch 'UserNotFoundException' -or $administratorScript -notmatch 'assumed-role') {
+    throw 'El alta inicial Cognito debe manejar usuario inexistente y exigir el rol de despliegue.'
+}
 
 foreach ($secretScript in @('scripts/initialize-amplify-github-secret.ps1','scripts/initialize-serverless-access-key-secret.ps1')) {
     $secretScriptText = Get-Content -LiteralPath (Join-Path $repositoryRoot $secretScript) -Raw

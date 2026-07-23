@@ -502,6 +502,8 @@ $initialPassword = Read-Host 'Clave inicial' -AsSecureString
   -ExpectedAccountId 123456789012
 ```
 
+El comando debe ejecutarse con una sesión vigente de `epico-deployment-<ambiente>`. En la primera ejecución, `admin-get-user` devuelve internamente `UserNotFoundException`; el script lo interpreta como alta nueva, crea el usuario con mensajes suprimidos, establece la contraseña permanente y lo agrega al grupo administrativo. Cualquier otro error de consulta detiene el proceso y muestra la causa de AWS.
+
 Entregar usuario y clave por canales separados. No registrar la contraseña. Solicitar cambio inmediato.
 
 ## 15. Pruebas y devolución al cliente

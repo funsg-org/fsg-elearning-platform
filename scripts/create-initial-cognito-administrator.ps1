@@ -25,8 +25,32 @@ foreach ($variableName in @('COGNITO_USER_POOL_ID','COGNITO_ADMINISTRATORS_GROUP
 
 $awsBase = @('--region', $Region)
 if ($AwsProfile) { $awsBase += @('--profile', $AwsProfile) }
-$identity = (& aws sts get-caller-identity --output json @awsBase | Out-String) | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0 -or $identity.Account -ne $ExpectedAccountId) { throw 'La identidad AWS activa no corresponde a la cuenta esperada.' }
+function Invoke-AwsNative {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & aws @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
+    [pscustomobject]@{
+        ExitCode = $exitCode
+        Output = @($output)
+        Text = (($output | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine)
+    }
+}
+
+$identityCall = Invoke-AwsNative (@('sts','get-caller-identity','--output','json') + $awsBase)
+if ($identityCall.ExitCode -ne 0) { throw "No se pudo consultar la identidad AWS: $($identityCall.Text)" }
+$identity = ($identityCall.Output -join [Environment]::NewLine) | ConvertFrom-Json
+if ($identity.Account -ne $ExpectedAccountId) { throw 'La identidad AWS activa no corresponde a la cuenta esperada.' }
+$expectedRoleName = "epico-deployment-$Environment"
+if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/$([regex]::Escape($expectedRoleName))/") {
+    throw "La identidad activa '$($identity.Arn)' no es una sesión del rol '$expectedRoleName'. Vuelva a ejecutar enter-deployment-role.ps1."
+}
 
 if (-not $Execute) {
     Write-Host "Vista previa: crear o actualizar '$Email' en $env:COGNITO_USER_POOL_ID y agregarlo a $env:COGNITO_ADMINISTRATORS_GROUP."
@@ -40,15 +64,18 @@ try {
     if ($plainPassword.Length -lt 12 -or $plainPassword -notmatch '[a-z]' -or $plainPassword -notmatch '[A-Z]' -or $plainPassword -notmatch '\d' -or $plainPassword -notmatch '[^A-Za-z0-9]') {
         throw 'La clave inicial debe tener al menos 12 caracteres, mayuscula, minuscula, numero y simbolo.'
     }
-    & aws cognito-idp admin-get-user --user-pool-id $env:COGNITO_USER_POOL_ID --username $Email @awsBase 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        & aws cognito-idp admin-create-user --user-pool-id $env:COGNITO_USER_POOL_ID --username $Email --user-attributes "Name=email,Value=$Email" "Name=email_verified,Value=true" "Name=name,Value=$Name" --message-action SUPPRESS @awsBase | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el usuario Cognito.' }
+    $lookup = Invoke-AwsNative (@('cognito-idp','admin-get-user','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email) + $awsBase)
+    if ($lookup.ExitCode -ne 0) {
+        if ($lookup.Text -notmatch 'UserNotFoundException') {
+            throw "No se pudo comprobar si existe el usuario Cognito: $($lookup.Text)"
+        }
+        $create = Invoke-AwsNative (@('cognito-idp','admin-create-user','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email,'--user-attributes',"Name=email,Value=$Email",'Name=email_verified,Value=true',"Name=name,Value=$Name",'--message-action','SUPPRESS') + $awsBase)
+        if ($create.ExitCode -ne 0) { throw "No se pudo crear el usuario Cognito: $($create.Text)" }
     }
-    & aws cognito-idp admin-set-user-password --user-pool-id $env:COGNITO_USER_POOL_ID --username $Email --password $plainPassword --permanent @awsBase | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudo establecer la clave inicial.' }
-    & aws cognito-idp admin-add-user-to-group --user-pool-id $env:COGNITO_USER_POOL_ID --username $Email --group-name $env:COGNITO_ADMINISTRATORS_GROUP @awsBase | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudo agregar el usuario al grupo administrativo.' }
+    $setPassword = Invoke-AwsNative (@('cognito-idp','admin-set-user-password','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email,'--password',$plainPassword,'--permanent') + $awsBase)
+    if ($setPassword.ExitCode -ne 0) { throw "No se pudo establecer la clave inicial: $($setPassword.Text)" }
+    $addToGroup = Invoke-AwsNative (@('cognito-idp','admin-add-user-to-group','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email,'--group-name',$env:COGNITO_ADMINISTRATORS_GROUP) + $awsBase)
+    if ($addToGroup.ExitCode -ne 0) { throw "No se pudo agregar el usuario al grupo administrativo: $($addToGroup.Text)" }
 }
 finally {
     if ($passwordPtr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPtr) }
