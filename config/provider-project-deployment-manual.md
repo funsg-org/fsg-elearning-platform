@@ -281,15 +281,156 @@ Antes de cada `npx serverless deploy`, capturar el manifiesto con `capture-servi
 
 ## 12. Exportar URLs de servicios
 
+Las variables no se inventan ni se copian manualmente desde API Gateway:
+
+1. `config/platform-outputs.<ambiente>.env` proviene de los Outputs de `epico-platform-<ambiente>` y contiene Cognito, CloudFront, bucket y grupo administrativo.
+2. `config/service-outputs.<ambiente>.env` proviene de los siete stacks `ms-epico-<servicio>-<ambiente>` y contiene las siete URLs de API Gateway.
+3. `export-amplify-environments.ps1` combina ambos contratos y genera los mapas que se cargarán en las ramas Amplify.
+
 ```powershell
+.\scripts\export-cloudformation-outputs.ps1 `
+  -StackName "epico-platform-$env:ENVIRONMENT"
 .\scripts\export-serverless-outputs.ps1
 .\scripts\validate-environment.ps1 -RequirePlatformOutputs -RequireServiceOutputs
 .\scripts\export-amplify-environments.ps1
 ```
 
+Se generan:
+
+| Archivo local | Destino exacto |
+| --- | --- |
+| `config/amplify-client-<ambiente>-env.json` | Rama del portal público en `epico-client-<ambiente>` |
+| `config/amplify-admin-<ambiente>-env.json` | Rama de la consola administrativa en `epico-admin-<ambiente>` |
+
+El mapa público contiene `VITE_BASE_PATH`, las siete variables `VITE_*_API_URL` y `VITE_MEDIA_CDN_URL`. El mapa administrativo contiene las URLs y además `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP`.
+
+Revisar ambos archivos:
+
+```powershell
+Get-Content "config/amplify-client-$($env:ENVIRONMENT)-env.json"
+Get-Content "config/amplify-admin-$($env:ENVIRONMENT)-env.json"
+```
+
+No son archivos `.env` del código fuente ni se suben a GitHub. Son contratos locales ignorados por Git. Los valores `VITE_*` se incorporan al JavaScript del navegador y, por tanto, son públicos. Nunca deben contener contraseñas, tokens, Access Keys, `COGNITO_CLIENT_SECRET_ID` ni el valor del Client Secret.
+
 Revisar que los JSON de Amplify contengan solamente URLs, IDs públicos, CDN y grupo administrativo; nunca secretos.
 
 ## 13. Configurar y publicar frontends
+
+### 13.1 Identificar aplicaciones, ramas y mapas
+
+Ejecutar primero la vista previa:
+
+```powershell
+.\scripts\configure-amplify-branches.ps1 `
+  -Environment $env:ENVIRONMENT `
+  -StackName "epico-amplify-$env:ENVIRONMENT"
+```
+
+El script consulta los Outputs del stack y debe mostrar:
+
+- `cliente`: App ID, rama y `config/amplify-client-<ambiente>-env.json`.
+- `administrador`: App ID, rama y `config/amplify-admin-<ambiente>-env.json`.
+
+QA debe apuntar a `feature/epico-deployment-readiness`; producción apunta a `main` después del PR aprobado. Detenerse si el nombre de rama no corresponde.
+
+### 13.2 Cargar las variables en las ramas Amplify
+
+La vía recomendada es el script, no un `.env` y no la escritura manual:
+
+```powershell
+.\scripts\configure-amplify-branches.ps1 `
+  -Environment $env:ENVIRONMENT `
+  -StackName "epico-amplify-$env:ENVIRONMENT" `
+  -Execute
+```
+
+El comando usa `aws amplify update-branch`: carga cada JSON en **Environment variables de la rama correspondiente**, no modifica los repositorios, no inicia builds y mantiene `EnableAutoBuild=false`.
+
+Para verificarlo en la consola web:
+
+1. AWS Console → **AWS Amplify** → región `us-east-1`.
+2. Abrir `epico-admin-<ambiente>` o `epico-client-<ambiente>`.
+3. Elegir **Hosting** → **Environment variables** → **Manage variables**.
+4. Confirmar las claves del JSON correspondiente y su rama.
+5. No añadir secretos ni aplicar accidentalmente valores de QA a producción.
+
+La consola se utiliza para verificar o como contingencia. Una corrección manual debe reflejarse después en la automatización para evitar divergencias.
+
+Referencia oficial: [Configurar variables de entorno en AWS Amplify Hosting](https://docs.aws.amazon.com/amplify/latest/userguide/setting-env-vars.html).
+
+### 13.3 Verificar por AWS CLI
+
+```powershell
+$amplifyStack = "epico-amplify-$env:ENVIRONMENT"
+
+$adminAppId = aws cloudformation describe-stacks `
+  --stack-name $amplifyStack --region us-east-1 `
+  --query "Stacks[0].Outputs[?OutputKey=='AdminAmplifyAppId'].OutputValue | [0]" `
+  --output text
+$adminBranch = aws cloudformation describe-stacks `
+  --stack-name $amplifyStack --region us-east-1 `
+  --query "Stacks[0].Outputs[?OutputKey=='AdminAmplifyBranch'].OutputValue | [0]" `
+  --output text
+
+$clientAppId = aws cloudformation describe-stacks `
+  --stack-name $amplifyStack --region us-east-1 `
+  --query "Stacks[0].Outputs[?OutputKey=='ClientAmplifyAppId'].OutputValue | [0]" `
+  --output text
+$clientBranch = aws cloudformation describe-stacks `
+  --stack-name $amplifyStack --region us-east-1 `
+  --query "Stacks[0].Outputs[?OutputKey=='ClientAmplifyBranch'].OutputValue | [0]" `
+  --output text
+
+aws amplify get-branch --app-id $adminAppId --branch-name $adminBranch `
+  --region us-east-1 --query "branch.environmentVariables"
+aws amplify get-branch --app-id $clientAppId --branch-name $clientBranch `
+  --region us-east-1 --query "branch.environmentVariables"
+```
+
+El administrativo debe contener las tres variables Cognito del punto 12. Ninguna rama debe contener un Client Secret.
+
+### 13.4 Publicar primero el administrativo
+
+```powershell
+$adminJob = aws amplify start-job `
+  --app-id $adminAppId --branch-name $adminBranch `
+  --job-type RELEASE --region us-east-1 `
+  --output json | ConvertFrom-Json
+
+$adminJobId = $adminJob.jobSummary.jobId
+$adminJobId
+
+aws amplify get-job `
+  --app-id $adminAppId --branch-name $adminBranch `
+  --job-id $adminJobId --region us-east-1 `
+  --query "job.summary.[status,startTime,endTime]" `
+  --output table
+```
+
+Repetir `get-job` hasta obtener `SUCCEED`. Si termina en `FAILED` o `CANCELLED`, detenerse y revisar el log del job en Amplify. No publicar el portal público. Con el administrativo exitoso, validar login Cognito, pertenencia al grupo administrador y consumo de las siete APIs.
+
+### 13.5 Publicar después el portal público
+
+```powershell
+$clientJob = aws amplify start-job `
+  --app-id $clientAppId --branch-name $clientBranch `
+  --job-type RELEASE --region us-east-1 `
+  --output json | ConvertFrom-Json
+
+$clientJobId = $clientJob.jobSummary.jobId
+$clientJobId
+
+aws amplify get-job `
+  --app-id $clientAppId --branch-name $clientBranch `
+  --job-id $clientJobId --region us-east-1 `
+  --query "job.summary.[status,startTime,endTime]" `
+  --output table
+```
+
+Esperar `SUCCEED`, abrir la URL pública y probar navegación, autenticación, APIs y contenido de CloudFront. Registrar App IDs, ramas, Job IDs, commits, estados y URLs. No activar auto-build hasta que QA haya sido aceptado y exista una decisión operativa explícita.
+
+Resumen de control:
 
 1. Cargar las variables generadas en las ramas Amplify.
 2. Confirmar `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP` en el administrativo.
