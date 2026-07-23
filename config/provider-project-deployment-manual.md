@@ -267,6 +267,14 @@ En cada servicio ejecutar `npm ci --ignore-scripts`. Si uno falla, detener la ve
 
 ## 11. Desplegar los siete microservicios
 
+Antes de entrar al primer repositorio, cargar la configuración desde la raíz. Este comando no modifica `.env`; deriva `RUNTIME_NODE_ENV=production` y conserva `ENVIRONMENT` como el nombre del stage (`qa` o `production`):
+
+```powershell
+. .\scripts\load-environment.ps1 -Quiet
+```
+
+Para los seis servicios de negocio, Serverless toma `MEDIA_CORS_ALLOWED_ORIGINS` del `.env` raíz y lo publica en Lambda como `CORS_ALLOWED_ORIGINS`. Por ello, el `.env` debe contener las URLs Amplify exactas antes de desplegar los microservicios.
+
 Orden obligatorio:
 
 1. Auth
@@ -277,7 +285,15 @@ Orden obligatorio:
 6. Users
 7. Videos
 
-Antes de cada `npx serverless deploy`, capturar el manifiesto con `capture-service-recovery-manifest.ps1`. Usar `--stage production --region us-east-1`. Detenerse ante el primer error y generar las instrucciones de recuperación; no usar `serverless remove` como rollback.
+Antes de cada `npx serverless deploy`, capturar el manifiesto con `capture-service-recovery-manifest.ps1`. Usar `--stage $env:ENVIRONMENT --region $env:AWS_REGION`. Detenerse ante el primer error y generar las instrucciones de recuperación; no usar `serverless remove` como rollback.
+
+Ejemplo desde cada carpeta de servicio:
+
+```powershell
+npx serverless deploy --stage $env:ENVIRONMENT --region $env:AWS_REGION
+```
+
+Si cambia una URL de Amplify o se modifica `MEDIA_CORS_ALLOWED_ORIGINS`, volver a cargar el entorno y redesplegar Course, Menu, Metrics, Subscriptions, Users y Videos. Actualizar solamente el stack compartido no cambia el CORS interno de las Lambdas.
 
 ## 12. Exportar URLs de servicios
 

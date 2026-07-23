@@ -43,6 +43,7 @@ if ($EnvironmentName -and $EnvironmentName -ne $env:ENVIRONMENT) { throw "El par
 $EnvironmentName = $env:ENVIRONMENT
 $derived = [ordered]@{
     RESOURCE_SUFFIX = $EnvironmentName
+    RUNTIME_NODE_ENV = 'production'
     SSM_BASE_PATH = "/$($env:RESOURCE_PREFIX)/$EnvironmentName"
     SERVERLESS_ACCESS_KEY_SECRET_ID = "$($env:RESOURCE_PREFIX)/$EnvironmentName/serverless/access-key"
     GITHUB_AMPLIFY_SECRET_ID = "$($env:RESOURCE_PREFIX)/$EnvironmentName/github/amplify-token"

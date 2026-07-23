@@ -91,8 +91,16 @@ foreach ($service in $services) {
     $package=Get-Content -LiteralPath (Join-Path $repositoryRoot "$service\package.json") -Raw|ConvertFrom-Json
     if ($package.devDependencies.serverless -ne '4.39.0') { throw "$service debe fijar serverless 4.39.0 como devDependency raiz." }
     if ($package.devDependencies.'serverless-plugin-typescript') { throw "$service conserva serverless-plugin-typescript, incompatible y no utilizado." }
+    if ($service -ne 'services\ms-aprendamosgye-auth') {
+        if ($serverlessConfiguration -notmatch 'NODE_ENV:\s*\$\{env:RUNTIME_NODE_ENV\}') { throw "$service no usa el modo de ejecucion derivado RUNTIME_NODE_ENV." }
+        if ($serverlessConfiguration -notmatch 'CORS_ALLOWED_ORIGINS:\s*\$\{env:MEDIA_CORS_ALLOWED_ORIGINS\}') { throw "$service no inyecta los origenes CORS parametrizados." }
+        $lambdaSource = Get-Content -LiteralPath (Join-Path $repositoryRoot "$service\src\lambda.ts") -Raw
+        if ($lambdaSource -notmatch 'process\.env\.CORS_ALLOWED_ORIGINS') { throw "$service no consume CORS_ALLOWED_ORIGINS en Lambda." }
+        if ($lambdaSource -match 'https://[^''"]+\.amplifyapp\.com') { throw "$service conserva un origen Amplify fijo en Lambda." }
+    }
 }
 Add-Check "Serverless 4.39.0 reproducible y contratos ~4.39.0 verificados en los siete microservicios"
+Add-Check 'Modo Node.js y CORS parametrizados verificados en los seis microservicios de negocio'
 $serverlessDataText=($services|ForEach-Object { Get-Content -LiteralPath (Join-Path $repositoryRoot "$_\serverless.yml") -Raw }) -join [Environment]::NewLine
 $tableCount=([regex]::Matches($serverlessDataText,'Type:\s*AWS::DynamoDB::Table')).Count
 $retainCount=([regex]::Matches($serverlessDataText,'DeletionPolicy:\s*Retain')).Count
