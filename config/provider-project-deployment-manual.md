@@ -334,6 +334,33 @@ El script consulta los Outputs del stack y debe mostrar:
 
 QA debe apuntar a `feature/epico-deployment-readiness`; producción apunta a `main` después del PR aprobado. Detenerse si el nombre de rama no corresponde.
 
+#### Recuperar un stack QA que todavía apunta a `qa`
+
+No crear una rama Git `qa` para satisfacer el stack. Ese nombre correspondía a una configuración anterior incorrecta. Si la vista previa o los logs indican `Remote branch qa not found`, proceder así:
+
+1. Confirmar que `infrastructure/amplify-parameters.json` tenga:
+
+```text
+DeploymentBranch=feature/epico-deployment-readiness
+DeploymentBranchDomainPrefix=feature-epico-deployment-readiness
+```
+
+2. Actualizar el stack Amplify y revisar que el Change Set sustituya las ramas, no las aplicaciones:
+
+```powershell
+.\scripts\deploy-amplify-bootstrap.ps1 `
+  -Environment qa `
+  -Execute -ApproveChangeSets `
+  -ExpectedAccountId $accountId
+```
+
+3. El script regenera `config/amplify-outputs.qa.env`. Confirmar que ambas claves `*_AMPLIFY_BRANCH` indiquen `feature/epico-deployment-readiness` y que las URLs comiencen con `https://feature-epico-deployment-readiness.`.
+4. Las URLs Amplify cambian al cambiar la rama. El proveedor entrega las dos URLs nuevas al cliente y se detiene.
+5. El cliente actualiza `MEDIA_CORS_ALLOWED_ORIGINS` con ambas URLs, regenera los parámetros compartidos, revisa y ejecuta un Change Set de `epico-platform-qa`.
+6. Solo después de confirmar el CORS actualizado, el proveedor vuelve a ejecutar los puntos 12 y 13.2. Las variables de rama deben cargarse nuevamente antes del siguiente build.
+
+El intento fallido no requiere eliminar las aplicaciones Amplify. Una vez sustituida la rama del stack, los jobs siguientes clonarán la rama real.
+
 ### 13.2 Cargar las variables en las ramas Amplify
 
 La vía recomendada es el script, no un `.env` y no la escritura manual:

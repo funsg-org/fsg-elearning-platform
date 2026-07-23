@@ -54,6 +54,10 @@ foreach ($requiredCloudFormationAction in @('DescribeStackResource','DescribeSta
         throw "El rol de despliegue no permite cloudformation:$requiredCloudFormationAction requerido por Serverless."
     }
 }
+$configureAmplifyScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/configure-amplify-branches.ps1') -Raw
+if ($configureAmplifyScript -notmatch "feature/epico-deployment-readiness" -or $configureAmplifyScript -notmatch "rama obsoleta") {
+    throw 'La configuración Amplify debe rechazar un stack QA que todavía apunte a una rama Git obsoleta.'
+}
 
 foreach ($secretScript in @('scripts/initialize-amplify-github-secret.ps1','scripts/initialize-serverless-access-key-secret.ps1')) {
     $secretScriptText = Get-Content -LiteralPath (Join-Path $repositoryRoot $secretScript) -Raw

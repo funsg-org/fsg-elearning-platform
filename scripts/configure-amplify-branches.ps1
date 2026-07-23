@@ -28,8 +28,12 @@ $targets = @(
     @{ Name='cliente'; AppId=$outputs.ClientAmplifyAppId; Branch=$outputs.ClientAmplifyBranch; File=$ClientEnvironmentFile },
     @{ Name='administrador'; AppId=$outputs.AdminAmplifyAppId; Branch=$outputs.AdminAmplifyBranch; File=$AdminEnvironmentFile }
 )
+$expectedBranch = if ($Environment -eq 'qa') { 'feature/epico-deployment-readiness' } else { 'main' }
 foreach ($target in $targets) {
     if (-not $target.AppId -or -not $target.Branch) { throw "Faltan Outputs para $($target.Name)." }
+    if ($target.Branch -ne $expectedBranch) {
+        throw "El stack '$StackName' apunta la aplicación $($target.Name) a la rama obsoleta '$($target.Branch)'; para $Environment debe usar '$expectedBranch'. Actualice primero el stack Amplify y regenere sus Outputs."
+    }
     Write-Host "$($target.Name): app $($target.AppId), rama $($target.Branch), variables $($target.File)"
 }
 if (-not $Execute) { Write-Warning 'Vista previa: no se modificaron ramas ni se iniciaron builds.'; exit 0 }
