@@ -234,6 +234,7 @@ Corregir todos los errores. No continuar con cuenta, secreto, parámetros, rama,
 ```powershell
 .\scripts\deploy-platform.ps1 `
   -Execute -ApproveChangeSets `
+  -MigrateMenu `
   -ExpectedAccountId 123456789012 `
   -DeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
 ```
@@ -241,6 +242,18 @@ Corregir todos los errores. No continuar con cuenta, secreto, parámetros, rama,
 El proceso valida, instala dependencias, crea Amplify sin builds, obtiene sus URLs, crea infraestructura compartida, exporta outputs, despliega secuencialmente siete servicios, captura recuperación, exporta APIs y configura variables `VITE_*`. Se detiene ante el primer error.
 
 ## 16. Crear el primer administrador
+
+Si no se utilizó `-MigrateMenu` en el despliegue completo, migrar el menú después de Course y Menu y antes de publicar los frontends:
+
+```powershell
+.\scripts\import-menu-migration.ps1
+
+.\scripts\import-menu-migration.ps1 `
+  -Execute `
+  -ExpectedAccountId 123456789012
+```
+
+El primer comando valida localmente el CSV. El segundo verifica cuenta, rol, tablas, jerarquía y cursos referenciados antes de insertar. Los elementos idénticos se omiten y los diferentes detienen la operación.
 
 Después del stack compartido:
 

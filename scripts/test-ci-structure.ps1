@@ -29,6 +29,8 @@ $requiredFiles = @(
     'scripts/test-deployment-readiness.ps1'
     'scripts/create-initial-cognito-administrator.ps1'
     'scripts/build-client-deployment-package.ps1'
+    'scripts/import-menu-migration.ps1'
+    'migrations/menu/menu-migration.csv'
 )
 foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $repositoryRoot $relativePath) -PathType Leaf)) { throw "Falta el archivo obligatorio '$relativePath'." }
@@ -62,6 +64,16 @@ $administratorScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scri
 if ($administratorScript -notmatch 'UserNotFoundException' -or $administratorScript -notmatch 'assumed-role') {
     throw 'El alta inicial Cognito debe manejar usuario inexistente y exigir el rol de despliegue.'
 }
+
+$menuMigrationScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/import-menu-migration.ps1') -Raw
+foreach ($requiredMigrationControl in @('attribute_not_exists\(idMenu\)','ReplaceExisting','CoursesTableName','ExpectedAccountId')) {
+    if ($menuMigrationScript -notmatch $requiredMigrationControl) { throw "La migracion de menu no contiene el control '$requiredMigrationControl'." }
+}
+$menuRows = @([IO.File]::ReadAllText((Join-Path $repositoryRoot 'migrations/menu/menu-migration.csv'),[Text.UTF8Encoding]::new($false,$true)) | ConvertFrom-Csv)
+$menuColumns = @($menuRows[0].PSObject.Properties.Name)
+$expectedMenuColumns = @('idMenu','createdAt','createdBy','description','icon','idCurso','idPadre','name','nombreCurso','nombrePadre','order','state','updatedAt','updatedBy','url')
+if (-not $menuRows.Count -or @($expectedMenuColumns | Where-Object { $_ -notin $menuColumns }).Count) { throw 'El CSV de menu esta vacio o no cumple el contrato de 15 columnas.' }
+if (@($menuRows.idMenu | Sort-Object -Unique).Count -ne $menuRows.Count) { throw 'El CSV de menu contiene IDs duplicados.' }
 
 foreach ($secretScript in @('scripts/initialize-amplify-github-secret.ps1','scripts/initialize-serverless-access-key-secret.ps1')) {
     $secretScriptText = Get-Content -LiteralPath (Join-Path $repositoryRoot $secretScript) -Raw

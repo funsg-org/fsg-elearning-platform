@@ -300,6 +300,48 @@ npx serverless deploy --stage $env:ENVIRONMENT --region $env:AWS_REGION
 
 Si cambia una URL de Amplify o se modifica `MEDIA_CORS_ALLOWED_ORIGINS`, volver a cargar el entorno y redesplegar Course, Menu, Metrics, Subscriptions, Users y Videos. Actualizar solamente el stack compartido no cambia el CORS interno de las Lambdas.
 
+### 11.1 Migrar los datos iniciales del menú
+
+Ejecutar después de que Course y Menu estén desplegados y antes de publicar los frontends. El CSV predeterminado es `migrations/menu/menu-migration.csv`; para una variante específica del cliente se define `MENU_MIGRATION_FILE` en `.env` o se pasa `-CsvFile`.
+
+Primero validar localmente, sin consultar ni escribir AWS:
+
+```powershell
+.\scripts\import-menu-migration.ps1 `
+  -CsvFile $env:MENU_MIGRATION_FILE
+```
+
+La validación comprueba las 15 columnas, UTF-8, UUID, números, IDs duplicados, órdenes repetidos, jerarquía padre/hijo y nombres de padre.
+
+Después, con la sesión temporal vigente:
+
+```powershell
+.\scripts\import-menu-migration.ps1 `
+  -CsvFile $env:MENU_MIGRATION_FILE `
+  -Execute `
+  -ExpectedAccountId $accountId
+```
+
+Antes de escribir, el script confirma:
+
+- cuenta y rol `<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>`;
+- tablas `<RESOURCE_PREFIX>-menu-<ENVIRONMENT>` y `<RESOURCE_PREFIX>-courses-<ENVIRONMENT>` en estado `ACTIVE`;
+- existencia de cada curso referenciado por `idCurso`;
+- estado de cada `idMenu` existente.
+
+La ejecución es idempotente: inserta faltantes y omite elementos idénticos. Si un ID existe con datos diferentes, se detiene antes de escribir. `-ReplaceExisting` solo se utiliza con autorización explícita, respaldo y revisión del plan, porque reemplaza el elemento completo.
+
+Si una ejecución se interrumpe, corregir la causa y repetir el mismo comando; los elementos ya idénticos se omitirán. No editar datos directamente desde la consola DynamoDB.
+
+El orquestador completo admite el paso mediante:
+
+```powershell
+.\scripts\deploy-platform.ps1 `
+  -Execute -ApproveChangeSets -MigrateMenu `
+  -ExpectedAccountId $accountId `
+  -DeploymentRoleArn $deploymentRoleArn
+```
+
 ## 12. Exportar URLs de servicios
 
 Las variables no se inventan ni se copian manualmente desde API Gateway:

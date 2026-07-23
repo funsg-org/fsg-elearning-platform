@@ -34,6 +34,7 @@ Los siguientes valores del `.env` separan instalaciones de clientes:
 CLIENT_CODE=epico
 RESOURCE_PREFIX=epico
 TAG_CLIENT=EPICO
+MENU_MIGRATION_FILE=migrations/menu/menu-migration.csv
 ```
 
 Para otro cliente se reemplazan de forma coordinada, por ejemplo:
@@ -44,7 +45,7 @@ RESOURCE_PREFIX=aprendamos
 TAG_CLIENT=APRENDAMOS
 ```
 
-Los nombres de carpetas y repositorios no cambian. `RESOURCE_PREFIX` controla nombres de stacks, roles, servicios, secretos, buckets y rutas; `TAG_CLIENT` permite separar costos.
+Los nombres de carpetas y repositorios no cambian. `RESOURCE_PREFIX` controla nombres de stacks, roles, servicios, secretos, buckets y rutas; `TAG_CLIENT` permite separar costos. `MENU_MIGRATION_FILE` permite seleccionar datos iniciales distintos por cliente sin cambiar el script.
 
 ## Valores derivados
 

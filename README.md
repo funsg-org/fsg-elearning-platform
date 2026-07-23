@@ -283,6 +283,8 @@ Para validar y visualizar el orden completo sin desplegar:
 
 El modo de ejecución requiere `-Execute`, parámetros locales completos y confirmación previa de costos/CORS. Sus reglas se documentan en `config/deployment-order.md`.
 
+En una instalación limpia, `-MigrateMenu` agrega después de los microservicios la carga idempotente de `MENU_MIGRATION_FILE`. La vista previa y ejecución directa están disponibles en `scripts/import-menu-migration.ps1`.
+
 La coordinación está en `config/implementation-manual.md`. El cliente ejecuta `config/client-installation-manual.md`; FSG ejecuta solamente la fase privada descrita en `config/provider-project-deployment-manual.md`; la aceptación se registra en `config/client-deployment-handover.md`.
 
 `TAG_COST_CENTER=PENDING` produce una advertencia y debe reemplazarse antes del primer despliegue que se utilice para análisis de costos.

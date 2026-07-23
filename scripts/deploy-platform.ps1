@@ -5,6 +5,8 @@ param(
     [switch]$Execute,
     [switch]$ApproveChangeSets,
     [switch]$AllowDirty,
+    [switch]$MigrateMenu,
+    [switch]$ReplaceExistingMenu,
     [string]$AwsProfile,
     [string]$ExpectedAccountId,
     [string]$DeploymentRoleArn,
@@ -13,7 +15,8 @@ param(
     [string]$AmplifyStackName,
     [string]$ParametersFile,
     [string]$AmplifyParametersFile,
-    [string]$AmplifyOutputsFile
+    [string]$AmplifyOutputsFile,
+    [string]$MenuMigrationFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -35,6 +38,14 @@ if ([string]::IsNullOrWhiteSpace($AmplifyParametersFile)) {
 $templateFile = Join-Path $repositoryRoot 'infrastructure\shared-resources.yml'
 $platformOutputsFile = Join-Path $repositoryRoot "config\platform-outputs.$Environment.env"
 $serviceOutputsFile = Join-Path $repositoryRoot "config\service-outputs.$Environment.env"
+if ($ReplaceExistingMenu -and -not $MigrateMenu) { throw '-ReplaceExistingMenu requiere -MigrateMenu.' }
+if (-not $MenuMigrationFile) {
+    $MenuMigrationFile = if ($env:MENU_MIGRATION_FILE) {
+        if ([System.IO.Path]::IsPathRooted($env:MENU_MIGRATION_FILE)) { $env:MENU_MIGRATION_FILE } else { Join-Path $repositoryRoot $env:MENU_MIGRATION_FILE }
+    } else {
+        Join-Path $repositoryRoot 'migrations\menu\menu-migration.csv'
+    }
+}
 
 $services = @(
     'services\ms-aprendamosgye-auth',
@@ -139,6 +150,10 @@ if (-not $Execute) {
         Write-Host "$step. Desplegar $service."
         $step++
     }
+    if ($MigrateMenu) {
+        Write-Host "$step. Validar y migrar los datos iniciales de menú desde $MenuMigrationFile."
+        $step++
+    }
     Write-Host "$step. Exportar URLs de API Gateway."
     $step++
     Write-Host "$step. Generar mapas locales para Amplify."
@@ -241,6 +256,18 @@ foreach ($service in $services) {
         & (Join-Path $PSScriptRoot 'write-service-recovery-instructions.ps1') -ServiceName $service -ServicePath $servicePath -StackName $serverlessStackName -ManifestFile $manifestFile -OutputFile $instructionsFile
         throw
     }
+}
+
+if ($MigrateMenu) {
+    $menuMigrationArguments = @{
+        CsvFile = $MenuMigrationFile
+        Environment = $Environment
+        Region = $Region
+        ExpectedAccountId = $ExpectedAccountId
+        Execute = $true
+    }
+    if ($ReplaceExistingMenu) { $menuMigrationArguments.ReplaceExisting = $true }
+    & (Join-Path $PSScriptRoot 'import-menu-migration.ps1') @menuMigrationArguments
 }
 
 $exportServicesArguments = @{ Region = $Region; ResourcePrefix = $env:RESOURCE_PREFIX; Environment = $env:ENVIRONMENT; OutputFile = $serviceOutputsFile }

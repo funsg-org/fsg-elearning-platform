@@ -324,6 +324,7 @@ El cliente entrega a FSG por canal aprobado:
 - Outputs no sensibles de CloudFormation listados arriba.
 - URLs Amplify.
 - Correo y nombre del administrador inicial.
+- Confirmación del CSV de menú aprobado para el cliente y ambiente.
 
 No entregar: contraseña root, MFA, contraseña personal, acceso de otro empleado ni valor del Client Secret Cognito.
 
@@ -337,11 +338,12 @@ FSG realiza, desde su estación privada:
 2. Instalación reproducible de dependencias.
 3. Carga segura de la credencial operativa Serverless.
 4. Despliegue secuencial de Auth, Course, Menu, Metrics, Subscriptions, Users y Videos.
-5. Captura de manifiestos de recuperación.
-6. Configuración de variables públicas `VITE_*` en Amplify.
-7. Creación del primer administrador Cognito.
-8. Build y publicación controlada de ambos frontends.
-9. Entrega de URLs y resultado técnico al cliente.
+5. Validación y migración idempotente del menú inicial; las referencias a cursos deben existir previamente.
+6. Captura de manifiestos de recuperación.
+7. Configuración de variables públicas `VITE_*` en Amplify.
+8. Creación del primer administrador Cognito.
+9. Build y publicación controlada de ambos frontends.
+10. Entrega de URLs, cantidad de menús migrados y resultado técnico al cliente.
 
 El procedimiento interno está en el manual del proveedor. El cliente no ejecuta comandos de esta sección ni recibe el código.
 

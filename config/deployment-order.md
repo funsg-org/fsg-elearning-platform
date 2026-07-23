@@ -2,7 +2,7 @@
 
 > Paso previo nuevo: crear primero el stack `amplify-hosting.yml` con auto-build desactivado. Sus URLs permiten reemplazar el CORS provisional antes de desplegar la infraestructura compartida. La activación de builds ocurre solamente al final y de forma explícita; consulte `config/amplify-hosting.md`.
 
-El script `scripts/deploy-platform.ps1` implementa el orden reproducible completo para una cuenta AWS ya creada: Amplify sin builds, CORS, infraestructura compartida, microservicios y variables públicas de los frontends.
+El script `scripts/deploy-platform.ps1` implementa el orden reproducible completo para una cuenta AWS ya creada: Amplify sin builds, CORS, infraestructura compartida, microservicios, migración inicial opcional del menú y variables públicas de los frontends.
 
 ## Vista previa segura
 
@@ -26,6 +26,7 @@ Este modo valida rama, submódulos, plantilla y estructura, y luego muestra el o
 .\scripts\deploy-platform.ps1 `
   -Execute `
   -ApproveChangeSets `
+  -MigrateMenu `
   -AwsProfile epico `
   -ExpectedAccountId 123456789012 `
   -DeploymentRoleArn arn:aws:iam::123456789012:role/<RESOURCE_PREFIX>-deployment-<ENVIRONMENT>
