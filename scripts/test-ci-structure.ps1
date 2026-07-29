@@ -67,6 +67,26 @@ $administratorScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scri
 if ($administratorScript -notmatch 'UserNotFoundException' -or $administratorScript -notmatch 'assumed-role') {
     throw 'El alta inicial Cognito debe manejar usuario inexistente y exigir el rol de despliegue.'
 }
+$metricsTemplate = Get-Content -LiteralPath (Join-Path $repositoryRoot 'services/ms-aprendamosgye-metrics/serverless.yml') -Raw
+foreach ($requiredMetricsCdnControl in @(
+    'MetricsDistribution',
+    'MetricsCdnUrl',
+    'MetricsCloudFrontDistributionId',
+    '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+    'b689b0a8-53d0-40ab-baf2-68738e2966ac'
+)) {
+    if ($metricsTemplate -notmatch $requiredMetricsCdnControl) {
+        throw "Metrics no contiene el control CDN '$requiredMetricsCdnControl'."
+    }
+}
+$serviceOutputScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/export-serverless-outputs.ps1') -Raw
+if ($serviceOutputScript -notmatch "entry\.Value -eq 'metrics'.*MetricsCdnUrl") {
+    throw 'El contrato de servicios debe exportar MetricsCdnUrl como METRICS_API_URL.'
+}
+$environmentValidator = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/validate-environment.ps1') -Raw
+if ($environmentValidator -notmatch "variable -eq 'METRICS_API_URL'" -or $environmentValidator -notmatch 'CDN geogr.+CloudFront de Metrics') {
+    throw 'La validación de entorno debe exigir CloudFront para METRICS_API_URL.'
+}
 
 $menuMigrationScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/import-menu-migration.ps1') -Raw
 foreach ($requiredMigrationControl in @('attribute_not_exists\(idMenu\)','ReplaceExisting','CoursesTableName','ExpectedAccountId')) {

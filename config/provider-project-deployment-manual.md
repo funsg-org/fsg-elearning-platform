@@ -360,10 +360,10 @@ Las variables no se inventan ni se copian manualmente desde API Gateway:
 
 Se generan:
 
-| Archivo local | Destino exacto |
-| --- | --- |
-| `config/amplify-client-<ambiente>-env.json` | Rama del portal público en `epico-client-<ambiente>` |
-| `config/amplify-admin-<ambiente>-env.json` | Rama de la consola administrativa en `epico-admin-<ambiente>` |
+| Archivo local                                 | Destino exacto                                                 |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| `config/amplify-client-<ambiente>-env.json` | Rama del portal público en`epico-client-<ambiente>`         |
+| `config/amplify-admin-<ambiente>-env.json`  | Rama de la consola administrativa en`epico-admin-<ambiente>` |
 
 El mapa público contiene `VITE_BASE_PATH`, las siete variables `VITE_*_API_URL` y `VITE_MEDIA_CDN_URL`. El mapa administrativo contiene las URLs y además `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP`.
 
@@ -532,15 +532,6 @@ aws amplify get-job `
 
 Esperar `SUCCEED`, abrir la URL pública y probar navegación, autenticación, APIs y contenido de CloudFront. Registrar App IDs, ramas, Job IDs, commits, estados y URLs. No activar auto-build hasta que QA haya sido aceptado y exista una decisión operativa explícita.
 
-Validar además rutas profundas de ambas SPA:
-
-1. Abrir directamente `<URL_ADMIN>/login`.
-2. Iniciar sesión y recargar el navegador sobre una ruta interna.
-3. Abrir directamente `<URL_CLIENT>/login` y recargar.
-4. Confirmar respuesta de la aplicación, no la página 404 de Amplify.
-
-Si la raíz funciona pero `/login` devuelve 404, no reconstruir ni cambiar React Router. Actualizar mediante Change Set el stack `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>` para aplicar las dos reglas `CustomRules` con reescritura HTTP `200` a `/index.html`; luego repetir estas pruebas.
-
 Resumen de control:
 
 1. Cargar las variables generadas en las ramas Amplify.
@@ -558,7 +549,7 @@ $initialPassword = Read-Host 'Clave inicial' -AsSecureString
 .\scripts\create-initial-cognito-administrator.ps1 `
   -Execute -Email administrador@epico.example `
   -Name 'Administrador EPICO' -Password $initialPassword `
-  -ExpectedAccountId 123456789012
+  -ExpectedAccountId 123456789012n
 ```
 
 El comando debe ejecutarse con una sesión vigente de `<RESOURCE_PREFIX>-deployment-<ambiente>`. En la primera ejecución, `admin-get-user` devuelve internamente `UserNotFoundException`; el script lo interpreta como alta nueva, crea el usuario con mensajes suprimidos, establece la contraseña permanente y lo agrega al grupo administrativo. Cualquier otro error de consulta detiene el proceso y muestra la causa de AWS.

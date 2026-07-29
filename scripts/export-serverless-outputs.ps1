@@ -49,12 +49,14 @@ foreach ($entry in $services.GetEnumerator()) {
     foreach ($output in $response.Stacks[0].Outputs) {
         $outputs[$output.OutputKey] = [string]$output.OutputValue
     }
-    $url = $outputs['ServiceEndpoint']
+    # Metrics must enter through CloudFront so the Lambda receives
+    # CloudFront-Viewer-Country. Other services use their API Gateway URL.
+    $url = if ($entry.Value -eq 'metrics') { $outputs['MetricsCdnUrl'] } else { $outputs['ServiceEndpoint'] }
     if ([string]::IsNullOrWhiteSpace($url)) {
         $url = $outputs['ApiGatewayRootUrl']
     }
     if ([string]::IsNullOrWhiteSpace($url)) {
-        throw "El stack '$stackName' no publica ServiceEndpoint ni ApiGatewayRootUrl."
+        throw "El stack '$stackName' no publica una URL de servicio válida."
     }
     $lines.Add("$($entry.Key)=$($url.TrimEnd('/'))")
 }

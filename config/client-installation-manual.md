@@ -28,17 +28,17 @@ Para cambiar de ambiente se editan ambos valores según la versión aprobada, se
 
 ## 3. Responsabilidades
 
-| Actividad | Cliente | Proveedor FSG |
-| --- | --- | --- |
-| Crear y administrar la cuenta AWS | Ejecuta | Asiste |
-| Instalar/configurar AWS CLI en equipo del cliente | Ejecuta | Asiste |
-| Configurar identidad AWS y facturación | Ejecuta | No recibe cuenta root |
-| Crear rol limitado de despliegue | Ejecuta | Proporciona plantilla |
-| Ejecutar CloudFormation de infraestructura ...crecompartida | Ejecuta | Asiste |
-| Crear Amplify conectado a repositorios privados | Autoriza recursos AWS | Ejecuta |
-| Desplegar microservicios y frontends | No accede al código | Ejecuta |
-| Crear/designar administrador Cognito | Designa y valida | Ejecuta alta técnica o asiste |
-| Pruebas y aceptación | Ejecuta con FSG | Ejecuta con cliente |
+| Actividad                                                   | Cliente               | Proveedor FSG                  |
+| ----------------------------------------------------------- | --------------------- | ------------------------------ |
+| Crear y administrar la cuenta AWS                           | Ejecuta               | Asiste                         |
+| Instalar/configurar AWS CLI en equipo del cliente           | Ejecuta               | Asiste                         |
+| Configurar identidad AWS y facturación                     | Ejecuta               | No recibe cuenta root          |
+| Crear rol limitado de despliegue                            | Ejecuta               | Proporciona plantilla          |
+| Ejecutar CloudFormation de infraestructura ...crecompartida | Ejecuta               | Asiste                         |
+| Crear Amplify conectado a repositorios privados             | Autoriza recursos AWS | Ejecuta                        |
+| Desplegar microservicios y frontends                        | No accede al código  | Ejecuta                        |
+| Crear/designar administrador Cognito                        | Designa y valida      | Ejecuta alta técnica o asiste |
+| Pruebas y aceptación                                       | Ejecuta con FSG       | Ejecuta con cliente            |
 
 ## 3. Contenido del paquete entregado
 
@@ -204,6 +204,7 @@ Comprobar que `infrastructure/parameters.json` contiene `MediaCorsAllowedOrigins
   -AwsProfile epico-bootstrap `
   -Region us-east-1
 ```
+
 La validación no crea recursos.
 
 ## 13. Crear y revisar el Change Set compartido
@@ -267,7 +268,6 @@ aws cloudformation describe-change-set `
   --query "[Status,ExecutionStatus,ChangeSetName]" `
   --output table
 ```
-
 
 Antes de aprobar debe comprobar que el Change Set contiene únicamente recursos esperados:
 
