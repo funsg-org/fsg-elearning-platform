@@ -44,6 +44,10 @@ Resources:
       AccessToken: !Sub '{{resolve:secretsmanager:${GitHubAccessTokenSecretId}:SecretString:token}}'
       EnableBranchAutoDeletion: false
       Platform: WEB
+      CustomRules:
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>'
+          Target: /index.html
+          Status: '200'
       BuildSpec: |
         version: 1
         frontend:
@@ -93,6 +97,10 @@ Resources:
       AccessToken: !Sub '{{resolve:secretsmanager:${GitHubAccessTokenSecretId}:SecretString:token}}'
       EnableBranchAutoDeletion: false
       Platform: WEB
+      CustomRules:
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>'
+          Target: /index.html
+          Status: '200'
       BuildSpec: |
         version: 1
         applications:
