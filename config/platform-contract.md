@@ -24,6 +24,14 @@ La infraestructura debe publicar exactamente estos Outputs:
 
 `CognitoClientSecretId` es el nombre o ARN del secreto. El valor del Client Secret nunca es un Output, una variable de frontend ni un archivo `.env`.
 
+## Identidad Cognito
+
+- El User Pool utiliza username nativo; no se configura `UsernameAttributes`.
+- El usuario del portal público registra su cédula en `Username`. El claim `cognito:username` conserva esa cédula para relacionarla con los datos funcionales.
+- El correo es obligatorio, se verifica automáticamente y está habilitado como alias.
+- El administrador recibe un `Username` interno estable que no tiene formato de correo, se incorpora al grupo administrativo y accede mediante el alias de correo. Cognito no permite que el username interno tenga formato de correo cuando `email` está habilitado como alias.
+- La modalidad de username de un User Pool no se puede convertir en sitio. Un cambio de modalidad exige un pool nuevo, reexportar Outputs y redesplegar los consumidores.
+
 ## Archivo generado localmente
 
 ```powershell

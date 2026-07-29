@@ -8,7 +8,7 @@ La plantilla no configura dominio personalizado. CloudFront utiliza su certifica
 
 ## Recursos de identidad
 
-- User Pool EPICO.
+- User Pool por ambiente con username nativo: la cédula identifica al usuario del portal público y el correo funciona como alias verificado. Los administradores reciben un username interno estable, acceden mediante el alias de correo y pertenecen al grupo administrativo.
 - App Client público sin secreto para frontends.
 - App Client confidencial para Auth.
 - Secreto `epico/production/cognito/auth-client-secret`.

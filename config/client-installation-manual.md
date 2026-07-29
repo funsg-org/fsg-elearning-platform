@@ -279,6 +279,8 @@ Antes de aprobar debe comprobar que el Change Set contiene únicamente recursos 
 
 Revisar que no existan eliminaciones o reemplazos inesperados. Ejecutar el Change Set únicamente después de aprobarlo.
 
+Para una instalación limpia, Cognito debe crear un User Pool con username nativo y correo como alias. Si se está corrigiendo una instalación de prueba creada anteriormente por correo, el Change Set debe crear el nuevo pool `<RESOURCE_PREFIX>-identity-<RESOURCE_SUFFIX>`, reemplazar los App Clients y el grupo, y conservar el pool anterior `<RESOURCE_PREFIX>-users-<RESOURCE_SUFFIX>` mediante `Retain`. Esta sustitución requiere confirmación expresa de que los usuarios anteriores pueden descartarse; S3, CloudFront y las tablas no deben reemplazarse.
+
 ```powershell
 aws cloudformation execute-change-set `
   --stack-name $platformStack `
@@ -312,6 +314,7 @@ Verificar además:
 - S3 con bloqueo público y versionado.
 - CloudFront habilitado.
 - User Pool y secreto con retención.
+- User Pool configurado con username nativo y alias de correo: los clientes ingresan con cédula y los administradores con correo.
 - Tags y CostCenter en recursos compatibles.
 
 ## 15. Entregar datos al proveedor para los proyectos
@@ -358,6 +361,8 @@ Después de la intervención de FSG, el cliente continúa:
 5. Probar carga multimedia y entrega por CloudFront.
 6. Revisar logs/estados de stacks con asistencia FSG.
 7. Registrar resultados en `client-deployment-handover.md`.
+
+En la prueba de registro, el cliente ingresa su cédula como usuario y confirma el correo con el código más reciente. Si el código venció o Cognito lo invalidó, se utiliza **Reenviar código**; cada reenvío invalida todos los códigos anteriores.
 
 ## 18. Dominio opcional
 

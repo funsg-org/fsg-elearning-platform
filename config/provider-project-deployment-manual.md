@@ -549,12 +549,31 @@ $initialPassword = Read-Host 'Clave inicial' -AsSecureString
 .\scripts\create-initial-cognito-administrator.ps1 `
   -Execute -Email administrador@epico.example `
   -Name 'Administrador EPICO' -Password $initialPassword `
-  -ExpectedAccountId 123456789012n
+  -ExpectedAccountId 123456789012
 ```
+
+El User Pool debe mostrar username nativo y correo como alias. Los usuarios cliente se registran con la cédula como `Username`. Para los administradores, el script deriva un username interno estable `admin-<hash>` y configura el correo verificado como alias; el administrador siempre escribe su correo para acceder y no necesita conocer ese identificador interno. Cognito rechaza usernames internos con formato de correo cuando `email` es alias. No configurar `UsernameAttributes: [email]`, porque Cognito sustituiría el username funcional del cliente por un UUID y rompería las relaciones que utilizan `cognito:username`.
 
 El comando debe ejecutarse con una sesión vigente de `<RESOURCE_PREFIX>-deployment-<ambiente>`. En la primera ejecución, `admin-get-user` devuelve internamente `UserNotFoundException`; el script lo interpreta como alta nueva, crea el usuario con mensajes suprimidos, establece la contraseña permanente y lo agrega al grupo administrativo. Cualquier otro error de consulta detiene el proceso y muestra la causa de AWS.
 
 Entregar usuario y clave por canales separados. No registrar la contraseña. Solicitar cambio inmediato.
+
+### Sustitución de un User Pool configurado por correo
+
+La modalidad de username no se modifica en sitio. Para una instalación de prueba creada anteriormente con `UsernameAttributes: [email]`:
+
+1. Confirmar por escrito que los usuarios actuales pueden descartarse o respaldarse.
+2. Revisar un Change Set que cree el nuevo User Pool y reemplace los dos App Clients y el grupo; el pool anterior debe quedar retenido.
+3. Ejecutar el Change Set y esperar `UPDATE_COMPLETE`.
+4. Ejecutar `export-cloudformation-outputs.ps1` para obtener el nuevo Pool ID, App Client IDs y referencia del secreto.
+5. Redesplegar `ms-<prefijo>-auth-<ambiente>` con esos valores.
+6. Regenerar los mapas de Amplify y cargar nuevamente las variables de las ramas.
+7. Crear otra vez el administrador inicial.
+8. Publicar y probar primero administración; después probar registro, confirmación, login, recuperación y renovación del portal público usando cédula.
+9. Verificar que `cognito:username` sea la cédula del cliente.
+10. Identificar el pool retenido anterior por el nombre `<RESOURCE_PREFIX>-users-<RESOURCE_SUFFIX>` y eliminarlo manualmente solo después de la aceptación. El pool activo se denomina `<RESOURCE_PREFIX>-identity-<RESOURCE_SUFFIX>`.
+
+Durante la confirmación, `ExpiredCodeException` significa que Cognito invalidó el código aunque el correo todavía sea visible. Solicitar uno nuevo mediante `POST /auth/resend-confirmation-code` o el botón **Reenviar código**. Un reenvío invalida cualquier código previo; validar exclusivamente el último correo recibido.
 
 ## 15. Pruebas y devolución al cliente
 

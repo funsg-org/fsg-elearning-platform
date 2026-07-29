@@ -201,7 +201,9 @@ Amplify se crea con auto-build desactivado; autorizarlo todavía no publica las 
 
 Configuración inicial:
 
-- Inicio de sesión y verificación por correo.
+- Usuario cliente: username nativo igual a la cédula; el claim `cognito:username` conserva la cédula.
+- Usuario administrativo: username interno estable, acceso visible mediante alias de correo y pertenencia obligatoria al grupo administrativo.
+- El correo es obligatorio, se verifica y funciona como alias; no reemplaza la cédula del usuario cliente.
 - Recuperación por correo verificado.
 - Contraseña Cognito mínima de 8 caracteres, con mayúscula, minúscula, número y símbolo.
 - El administrador inicial requiere al menos 12 caracteres.
@@ -212,6 +214,8 @@ Configuración inicial:
 - Grupo: `epico-administrators-production`.
 
 El responsable de seguridad debe aceptar MFA desactivado o solicitar una fase posterior para habilitarlo y probar recuperación.
+
+La modalidad de inicio de sesión de Cognito es inmutable. Si una instalación existente fue creada con `UsernameAttributes: [email]`, no debe actualizarse como si fuera un cambio en sitio: se crea un User Pool nuevo, se regeneran App Clients y secreto, se exportan nuevamente los Outputs, se redespliega Auth, se actualizan las variables Cognito de Amplify y se recrea el administrador. El pool anterior permanece retenido hasta comprobar la migración y eliminarlo de forma explícita.
 
 ## 13. Ejecutar preflight sin desplegar
 
@@ -273,7 +277,7 @@ Eso es vista previa. Para confirmar:
   -ExpectedAccountId 123456789012
 ```
 
-El script verifica la cuenta, crea o actualiza el usuario, verifica su correo, establece la clave y lo incorpora al grupo administrativo. La consola rechaza usuarios fuera del grupo. Entregar usuario y contraseña por canales separados y solicitar cambio inmediato mediante recuperación de contraseña.
+El script deriva del correo normalizado un username interno estable con formato `admin-<hash>`, crea o actualiza el usuario, verifica su correo, establece la clave y lo incorpora al grupo administrativo. El administrador escribe su correo para acceder porque este funciona como alias; no necesita conocer el username interno. Esto no cambia el acceso por cédula de los usuarios cliente. La consola rechaza usuarios fuera del grupo. Entregar correo y contraseña por canales separados y solicitar cambio inmediato mediante recuperación de contraseña.
 
 ## 17. Activar y probar frontends
 
@@ -284,6 +288,8 @@ El script verifica la cuenta, crea o actualiza el usuario, verifica su correo, e
 5. Iniciar el frontend público.
 6. Probar carga S3 y entrega CloudFront.
 7. No integrar a `main` hasta aprobar estas pruebas.
+
+En el registro público, confirmar que el usuario recibe el código por correo y que la cédula permanece como `cognito:username`. Si Cognito responde `ExpiredCodeException` o indica que el código no es válido, usar `POST /auth/resend-confirmation-code` o el botón **Reenviar código** de la pantalla de verificación. Cada reenvío invalida los códigos anteriores: siempre debe ingresarse el código del correo más reciente.
 
 ## 18. Dominio personalizado opcional
 
