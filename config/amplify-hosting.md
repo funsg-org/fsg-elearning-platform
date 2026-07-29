@@ -2,6 +2,8 @@
 
 `infrastructure/amplify-hosting.yml` declara el portal público y la consola administrativa. El prefijo del cliente, ambiente y rama se reciben como parámetros; ninguna rama Git está asociada de forma fija a un ambiente.
 
+Ambas aplicaciones incluyen una regla SPA `200 → /index.html`, excluyendo archivos estáticos conocidos. Esta regla permite abrir o recargar directamente rutas administradas por React Router, por ejemplo `/login`, `/courses` o `/admin`; sin ella Amplify responde 404 porque busca esas rutas como archivos físicos.
+
 La selección procede del `.env`:
 
 ```text
@@ -29,5 +31,7 @@ Flujo:
 7. Habilitar o iniciar builds solo después de desplegar infraestructura y microservicios.
 
 Cambiar la rama requiere actualizar el stack Amplify, regenerar Outputs, volver a cargar las variables de rama y revisar CORS. Si cambia la URL resultante, también se actualiza `MEDIA_CORS_ALLOWED_ORIGINS`, el stack compartido y los seis microservicios de negocio.
+
+Si una aplicación existente devuelve 404 en una ruta profunda, actualizar su stack `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>` mediante Change Set. La modificación de `CustomRules` es `No interruption`; después comprobar la raíz, `/login` y una recarga del navegador sobre esa ruta. No es necesario reconstruir el frontend cuando solamente cambia esta regla de hosting.
 
 El token de GitHub se conserva en Secrets Manager. No se escribe en plantillas, JSON, `.env`, logs ni repositorios.
