@@ -60,6 +60,9 @@ $configureAmplifyScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 's
 if ($configureAmplifyScript -notmatch 'DEPLOYMENT_BRANCH' -or $configureAmplifyScript -match "feature/epico-deployment-readiness") {
     throw 'La configuración Amplify debe validar DEPLOYMENT_BRANCH sin una rama fija de cliente.'
 }
+$amplifyTemplate = Get-Content -LiteralPath (Join-Path $repositoryRoot 'infrastructure/amplify-hosting.yml') -Raw
+$spaRuleCount = ([regex]::Matches($amplifyTemplate,'(?ms)CustomRules:\s*-\s*Source:.*?Target:\s*/index\.html\s*Status:\s*''200''')).Count
+if ($spaRuleCount -ne 2) { throw "Amplify debe declarar una reescritura SPA a /index.html en las dos aplicaciones; encontradas=$spaRuleCount." }
 $administratorScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/create-initial-cognito-administrator.ps1') -Raw
 if ($administratorScript -notmatch 'UserNotFoundException' -or $administratorScript -notmatch 'assumed-role') {
     throw 'El alta inicial Cognito debe manejar usuario inexistente y exigir el rol de despliegue.'

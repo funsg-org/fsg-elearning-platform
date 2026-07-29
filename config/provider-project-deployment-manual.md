@@ -532,6 +532,15 @@ aws amplify get-job `
 
 Esperar `SUCCEED`, abrir la URL pública y probar navegación, autenticación, APIs y contenido de CloudFront. Registrar App IDs, ramas, Job IDs, commits, estados y URLs. No activar auto-build hasta que QA haya sido aceptado y exista una decisión operativa explícita.
 
+Validar además rutas profundas de ambas SPA:
+
+1. Abrir directamente `<URL_ADMIN>/login`.
+2. Iniciar sesión y recargar el navegador sobre una ruta interna.
+3. Abrir directamente `<URL_CLIENT>/login` y recargar.
+4. Confirmar respuesta de la aplicación, no la página 404 de Amplify.
+
+Si la raíz funciona pero `/login` devuelve 404, no reconstruir ni cambiar React Router. Actualizar mediante Change Set el stack `<RESOURCE_PREFIX>-amplify-<ENVIRONMENT>` para aplicar las dos reglas `CustomRules` con reescritura HTTP `200` a `/index.html`; luego repetir estas pruebas.
+
 Resumen de control:
 
 1. Cargar las variables generadas en las ramas Amplify.
