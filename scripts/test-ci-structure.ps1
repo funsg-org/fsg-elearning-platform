@@ -67,6 +67,55 @@ $administratorScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scri
 if ($administratorScript -notmatch 'UserNotFoundException' -or $administratorScript -notmatch 'assumed-role') {
     throw 'El alta inicial Cognito debe manejar usuario inexistente y exigir el rol de despliegue.'
 }
+foreach ($requiredAdministratorIdentityControl in @('SHA256','cognitoUsername','admin-','Acceso por correo')) {
+    if ($administratorScript -notmatch [regex]::Escape($requiredAdministratorIdentityControl)) {
+        throw "El alta inicial Cognito no contiene el control de identidad administrativa '$requiredAdministratorIdentityControl'."
+    }
+}
+$sharedResourcesTemplate = Get-Content -LiteralPath (Join-Path $repositoryRoot 'infrastructure/shared-resources.yml') -Raw
+if ($sharedResourcesTemplate -notmatch 'AliasAttributes:\s*\[email\]' -or $sharedResourcesTemplate -match 'UsernameAttributes:') {
+    throw 'Cognito debe usar username nativo para la cedula y email solamente como alias.'
+}
+$authService = Get-Content -LiteralPath (Join-Path $repositoryRoot 'services/ms-aprendamosgye-auth/src/auth/auth.service.ts') -Raw
+if ($authService -match "Name:\s*'username'") {
+    throw 'Auth no debe enviar username como UserAttribute; Cognito lo recibe en la propiedad Username.'
+}
+if ($authService -notmatch 'ResendConfirmationCodeCommand') {
+    throw 'Auth debe permitir reenviar un codigo de confirmacion vencido.'
+}
+$providerManual = Get-Content -LiteralPath (Join-Path $repositoryRoot 'config/provider-project-deployment-manual.md') -Raw
+foreach ($cognitoConsumer in @('Auth','Course','Menu','Metrics','Subscriptions','Users','Videos','ProviderARNs')) {
+    if ($providerManual -notmatch [regex]::Escape($cognitoConsumer)) {
+        throw "El manual de migracion Cognito no documenta el consumidor o control '$cognitoConsumer'."
+    }
+}
+$publicSubscriptionClient = @(
+    Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/infraestructure/repository/UserCoursesRepository.js') -Raw
+    Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/application/servicesUserCourses/UserProgressService.js') -Raw
+) -join [Environment]::NewLine
+if ($publicSubscriptionClient -match 'apiRepositoryEnroll\.(?:get|post|put|patch|delete)\(\s*`?[''"]/(?:user|enroll|class-progress|unit-evaluation|final-evaluation)') {
+    throw 'El portal publico debe incluir /subscriptions en todas las rutas del microservicio Subscriptions.'
+}
+$metricsTemplate = Get-Content -LiteralPath (Join-Path $repositoryRoot 'services/ms-aprendamosgye-metrics/serverless.yml') -Raw
+foreach ($requiredMetricsCdnControl in @(
+    'MetricsDistribution',
+    'MetricsCdnUrl',
+    'MetricsCloudFrontDistributionId',
+    '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+    'b689b0a8-53d0-40ab-baf2-68738e2966ac'
+)) {
+    if ($metricsTemplate -notmatch $requiredMetricsCdnControl) {
+        throw "Metrics no contiene el control CDN '$requiredMetricsCdnControl'."
+    }
+}
+$serviceOutputScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/export-serverless-outputs.ps1') -Raw
+if ($serviceOutputScript -notmatch "entry\.Value -eq 'metrics'.*MetricsCdnUrl") {
+    throw 'El contrato de servicios debe exportar MetricsCdnUrl como METRICS_API_URL.'
+}
+$environmentValidator = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/validate-environment.ps1') -Raw
+if ($environmentValidator -notmatch "variable -eq 'METRICS_API_URL'" -or $environmentValidator -notmatch 'CDN geogr.+CloudFront de Metrics') {
+    throw 'La validación de entorno debe exigir CloudFront para METRICS_API_URL.'
+}
 
 $menuMigrationScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/import-menu-migration.ps1') -Raw
 foreach ($requiredMigrationControl in @('attribute_not_exists\(idMenu\)','ReplaceExisting','CoursesTableName','ExpectedAccountId')) {

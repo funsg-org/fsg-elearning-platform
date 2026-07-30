@@ -92,6 +92,11 @@ if ($RequireServiceOutputs -or $serviceOutputsFileExists) {
         if ([string]::IsNullOrWhiteSpace($value) -or $value -match '^<.*>$') {
             $errors.Add("Falta una URL válida de servicio para $variable.")
         }
+        elseif ($variable -eq 'METRICS_API_URL') {
+            if ($value -notmatch '^https://[a-z0-9.-]+\.cloudfront\.net/?$') {
+                $errors.Add('METRICS_API_URL debe ser la URL HTTPS de la CDN geográfica CloudFront de Metrics.')
+            }
+        }
         elseif ($value -notmatch '^https://[a-z0-9-]+\.execute-api\.us-east-1\.amazonaws\.com/[a-z0-9-]+/?$') {
             $errors.Add("$variable debe ser una URL HTTPS de API Gateway en us-east-1.")
         }

@@ -23,6 +23,16 @@ foreach ($variableName in @('COGNITO_USER_POOL_ID','COGNITO_ADMINISTRATORS_GROUP
     if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($variableName))) { throw "Falta $variableName en el contrato de plataforma." }
 }
 
+$normalizedEmail = $Email.Trim().ToLowerInvariant()
+$sha256 = [Security.Cryptography.SHA256]::Create()
+try {
+    $emailHash = (($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($normalizedEmail)) | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+finally {
+    $sha256.Dispose()
+}
+$cognitoUsername = "admin-$($emailHash.Substring(0,24))"
+
 $awsBase = @('--region', $Region)
 if ($AwsProfile) { $awsBase += @('--profile', $AwsProfile) }
 function Invoke-AwsNative {
@@ -53,7 +63,8 @@ if ($identity.Arn -notmatch "^arn:aws:sts::$ExpectedAccountId`:assumed-role/$([r
 }
 
 if (-not $Execute) {
-    Write-Host "Vista previa: crear o actualizar '$Email' en $env:COGNITO_USER_POOL_ID y agregarlo a $env:COGNITO_ADMINISTRATORS_GROUP."
+    Write-Host "Vista previa: crear o actualizar el administrador '$normalizedEmail' en $env:COGNITO_USER_POOL_ID y agregarlo a $env:COGNITO_ADMINISTRATORS_GROUP."
+    Write-Host "Acceso visible: $normalizedEmail | Username interno Cognito: $cognitoUsername"
     Write-Host 'No se modifico AWS. Repita con -Execute para confirmar.'
     return
 }
@@ -64,17 +75,17 @@ try {
     if ($plainPassword.Length -lt 12 -or $plainPassword -notmatch '[a-z]' -or $plainPassword -notmatch '[A-Z]' -or $plainPassword -notmatch '\d' -or $plainPassword -notmatch '[^A-Za-z0-9]') {
         throw 'La clave inicial debe tener al menos 12 caracteres, mayuscula, minuscula, numero y simbolo.'
     }
-    $lookup = Invoke-AwsNative (@('cognito-idp','admin-get-user','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email) + $awsBase)
+    $lookup = Invoke-AwsNative (@('cognito-idp','admin-get-user','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$cognitoUsername) + $awsBase)
     if ($lookup.ExitCode -ne 0) {
         if ($lookup.Text -notmatch 'UserNotFoundException') {
             throw "No se pudo comprobar si existe el usuario Cognito: $($lookup.Text)"
         }
-        $create = Invoke-AwsNative (@('cognito-idp','admin-create-user','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email,'--user-attributes',"Name=email,Value=$Email",'Name=email_verified,Value=true',"Name=name,Value=$Name",'--message-action','SUPPRESS') + $awsBase)
+        $create = Invoke-AwsNative (@('cognito-idp','admin-create-user','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$cognitoUsername,'--user-attributes',"Name=email,Value=$normalizedEmail",'Name=email_verified,Value=true',"Name=name,Value=$Name",'--message-action','SUPPRESS') + $awsBase)
         if ($create.ExitCode -ne 0) { throw "No se pudo crear el usuario Cognito: $($create.Text)" }
     }
-    $setPassword = Invoke-AwsNative (@('cognito-idp','admin-set-user-password','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email,'--password',$plainPassword,'--permanent') + $awsBase)
+    $setPassword = Invoke-AwsNative (@('cognito-idp','admin-set-user-password','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$cognitoUsername,'--password',$plainPassword,'--permanent') + $awsBase)
     if ($setPassword.ExitCode -ne 0) { throw "No se pudo establecer la clave inicial: $($setPassword.Text)" }
-    $addToGroup = Invoke-AwsNative (@('cognito-idp','admin-add-user-to-group','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$Email,'--group-name',$env:COGNITO_ADMINISTRATORS_GROUP) + $awsBase)
+    $addToGroup = Invoke-AwsNative (@('cognito-idp','admin-add-user-to-group','--user-pool-id',$env:COGNITO_USER_POOL_ID,'--username',$cognitoUsername,'--group-name',$env:COGNITO_ADMINISTRATORS_GROUP) + $awsBase)
     if ($addToGroup.ExitCode -ne 0) { throw "No se pudo agregar el usuario al grupo administrativo: $($addToGroup.Text)" }
 }
 finally {
@@ -82,5 +93,5 @@ finally {
     $plainPassword = $null
 }
 
-Write-Host "Administrador creado y asignado al grupo: $Email" -ForegroundColor Green
+Write-Host "Administrador creado y asignado al grupo. Acceso por correo: $normalizedEmail" -ForegroundColor Green
 Write-Host 'Entregue la clave por un canal separado y solicite su cambio inmediato.'

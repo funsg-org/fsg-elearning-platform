@@ -7,7 +7,7 @@ Los dos frontends utilizan los mismos nombres para APIs y CDN. El portal adminis
 - `VITE_AUTH_API_URL`
 - `VITE_COURSE_API_URL`
 - `VITE_MENU_API_URL`
-- `VITE_METRICS_API_URL`
+- `VITE_METRICS_API_URL`: URL de la distribución CloudFront de métricas, no la URL directa de API Gateway.
 - `VITE_SUBSCRIPTIONS_API_URL`
 - `VITE_USERS_API_URL`
 - `VITE_VIDEOS_API_URL`

@@ -37,13 +37,13 @@ Parameters:
     Description: Exact Amplify origins allowed to use presigned S3 requests. No wildcard is accepted by the orchestrator.
 
 Resources:
-  UserPool:
+  IdentityUserPool:
     Type: AWS::Cognito::UserPool
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      UserPoolName: !Sub '${ResourcePrefix}-users-${ResourceSuffix}'
-      UsernameAttributes: [email]
+      UserPoolName: !Sub '${ResourcePrefix}-identity-${ResourceSuffix}'
+      AliasAttributes: [email]
       AutoVerifiedAttributes: [email]
       MfaConfiguration: 'OFF'
       AccountRecoverySetting:
@@ -85,7 +85,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub '${ResourcePrefix}-public-${ResourceSuffix}'
-      UserPoolId: !Ref UserPool
+      UserPoolId: !Ref IdentityUserPool
       GenerateSecret: false
       EnableTokenRevocation: true
       PreventUserExistenceErrors: ENABLED
@@ -107,13 +107,13 @@ Resources:
       GroupName: !Sub '${ResourcePrefix}-administrators-${ResourceSuffix}'
       Description: Administradores autorizados para la consola de gestion.
       Precedence: 1
-      UserPoolId: !Ref UserPool
+      UserPoolId: !Ref IdentityUserPool
 
   AuthUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub '${ResourcePrefix}-auth-${ResourceSuffix}'
-      UserPoolId: !Ref UserPool
+      UserPoolId: !Ref IdentityUserPool
       GenerateSecret: true
       EnableTokenRevocation: true
       PreventUserExistenceErrors: ENABLED
@@ -271,7 +271,7 @@ Resources:
     Type: Custom::StoreCognitoClientSecret
     Properties:
       ServiceToken: !GetAtt SecretWriterFunction.Arn
-      UserPoolId: !Ref UserPool
+      UserPoolId: !Ref IdentityUserPool
       ClientId: !Ref AuthUserPoolClient
       SecretId: !Ref AuthClientSecret
 
@@ -405,7 +405,7 @@ Outputs:
     Value: !Ref AWS::AccountId
   CognitoUserPoolId:
     Description: Cognito User Pool ID del ambiente.
-    Value: !Ref UserPool
+    Value: !Ref IdentityUserPool
   CognitoClientId:
     Description: Public Cognito App Client ID for frontends and API token validation.
     Value: !Ref PublicUserPoolClient

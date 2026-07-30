@@ -28,17 +28,17 @@ Para cambiar de ambiente se editan ambos valores según la versión aprobada, se
 
 ## 3. Responsabilidades
 
-| Actividad | Cliente | Proveedor FSG |
-| --- | --- | --- |
-| Crear y administrar la cuenta AWS | Ejecuta | Asiste |
-| Instalar/configurar AWS CLI en equipo del cliente | Ejecuta | Asiste |
-| Configurar identidad AWS y facturación | Ejecuta | No recibe cuenta root |
-| Crear rol limitado de despliegue | Ejecuta | Proporciona plantilla |
-| Ejecutar CloudFormation de infraestructura ...crecompartida | Ejecuta | Asiste |
-| Crear Amplify conectado a repositorios privados | Autoriza recursos AWS | Ejecuta |
-| Desplegar microservicios y frontends | No accede al código | Ejecuta |
-| Crear/designar administrador Cognito | Designa y valida | Ejecuta alta técnica o asiste |
-| Pruebas y aceptación | Ejecuta con FSG | Ejecuta con cliente |
+| Actividad                                                   | Cliente               | Proveedor FSG                  |
+| ----------------------------------------------------------- | --------------------- | ------------------------------ |
+| Crear y administrar la cuenta AWS                           | Ejecuta               | Asiste                         |
+| Instalar/configurar AWS CLI en equipo del cliente           | Ejecuta               | Asiste                         |
+| Configurar identidad AWS y facturación                     | Ejecuta               | No recibe cuenta root          |
+| Crear rol limitado de despliegue                            | Ejecuta               | Proporciona plantilla          |
+| Ejecutar CloudFormation de infraestructura ...crecompartida | Ejecuta               | Asiste                         |
+| Crear Amplify conectado a repositorios privados             | Autoriza recursos AWS | Ejecuta                        |
+| Desplegar microservicios y frontends                        | No accede al código  | Ejecuta                        |
+| Crear/designar administrador Cognito                        | Designa y valida      | Ejecuta alta técnica o asiste |
+| Pruebas y aceptación                                       | Ejecuta con FSG       | Ejecuta con cliente            |
 
 ## 3. Contenido del paquete entregado
 
@@ -204,6 +204,7 @@ Comprobar que `infrastructure/parameters.json` contiene `MediaCorsAllowedOrigins
   -AwsProfile epico-bootstrap `
   -Region us-east-1
 ```
+
 La validación no crea recursos.
 
 ## 13. Crear y revisar el Change Set compartido
@@ -268,7 +269,6 @@ aws cloudformation describe-change-set `
   --output table
 ```
 
-
 Antes de aprobar debe comprobar que el Change Set contiene únicamente recursos esperados:
 
 - Cognito User Pool, dos App Clients y grupo administrativo.
@@ -278,6 +278,8 @@ Antes de aprobar debe comprobar que el Change Set contiene únicamente recursos 
 - CloudFront y Origin Access Control.
 
 Revisar que no existan eliminaciones o reemplazos inesperados. Ejecutar el Change Set únicamente después de aprobarlo.
+
+Para una instalación limpia, Cognito debe crear un User Pool con username nativo y correo como alias. Si se está corrigiendo una instalación de prueba creada anteriormente por correo, el Change Set debe crear el nuevo pool `<RESOURCE_PREFIX>-identity-<RESOURCE_SUFFIX>`, reemplazar los App Clients y el grupo, y conservar el pool anterior `<RESOURCE_PREFIX>-users-<RESOURCE_SUFFIX>` mediante `Retain`. Esta sustitución requiere confirmación expresa de que los usuarios anteriores pueden descartarse; S3, CloudFront y las tablas no deben reemplazarse.
 
 ```powershell
 aws cloudformation execute-change-set `
@@ -312,6 +314,7 @@ Verificar además:
 - S3 con bloqueo público y versionado.
 - CloudFront habilitado.
 - User Pool y secreto con retención.
+- User Pool configurado con username nativo y alias de correo: los clientes ingresan con cédula y los administradores con correo.
 - Tags y CostCenter en recursos compatibles.
 
 ## 15. Entregar datos al proveedor para los proyectos
@@ -358,6 +361,8 @@ Después de la intervención de FSG, el cliente continúa:
 5. Probar carga multimedia y entrega por CloudFront.
 6. Revisar logs/estados de stacks con asistencia FSG.
 7. Registrar resultados en `client-deployment-handover.md`.
+
+En la prueba de registro, el cliente ingresa su cédula como usuario y confirma el correo con el código más reciente. Si el código venció o Cognito lo invalidó, se utiliza **Reenviar código**; cada reenvío invalida todos los códigos anteriores.
 
 ## 18. Dominio opcional
 

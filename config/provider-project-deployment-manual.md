@@ -360,10 +360,10 @@ Las variables no se inventan ni se copian manualmente desde API Gateway:
 
 Se generan:
 
-| Archivo local | Destino exacto |
-| --- | --- |
-| `config/amplify-client-<ambiente>-env.json` | Rama del portal público en `epico-client-<ambiente>` |
-| `config/amplify-admin-<ambiente>-env.json` | Rama de la consola administrativa en `epico-admin-<ambiente>` |
+| Archivo local                                 | Destino exacto                                                 |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| `config/amplify-client-<ambiente>-env.json` | Rama del portal público en`epico-client-<ambiente>`         |
+| `config/amplify-admin-<ambiente>-env.json`  | Rama de la consola administrativa en`epico-admin-<ambiente>` |
 
 El mapa público contiene `VITE_BASE_PATH`, las siete variables `VITE_*_API_URL` y `VITE_MEDIA_CDN_URL`. El mapa administrativo contiene las URLs y además `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP`.
 
@@ -561,9 +561,30 @@ $initialPassword = Read-Host 'Clave inicial' -AsSecureString
   -ExpectedAccountId 123456789012
 ```
 
+El User Pool debe mostrar username nativo y correo como alias. Los usuarios cliente se registran con la cédula como `Username`. Para los administradores, el script deriva un username interno estable `admin-<hash>` y configura el correo verificado como alias; el administrador siempre escribe su correo para acceder y no necesita conocer ese identificador interno. Cognito rechaza usernames internos con formato de correo cuando `email` es alias. No configurar `UsernameAttributes: [email]`, porque Cognito sustituiría el username funcional del cliente por un UUID y rompería las relaciones que utilizan `cognito:username`.
+
 El comando debe ejecutarse con una sesión vigente de `<RESOURCE_PREFIX>-deployment-<ambiente>`. En la primera ejecución, `admin-get-user` devuelve internamente `UserNotFoundException`; el script lo interpreta como alta nueva, crea el usuario con mensajes suprimidos, establece la contraseña permanente y lo agrega al grupo administrativo. Cualquier otro error de consulta detiene el proceso y muestra la causa de AWS.
 
 Entregar usuario y clave por canales separados. No registrar la contraseña. Solicitar cambio inmediato.
+
+### Sustitución de un User Pool configurado por correo
+
+La modalidad de username no se modifica en sitio. Para una instalación de prueba creada anteriormente con `UsernameAttributes: [email]`:
+
+1. Confirmar por escrito que los usuarios actuales pueden descartarse o respaldarse.
+2. Revisar un Change Set que cree el nuevo User Pool y reemplace los dos App Clients y el grupo; el pool anterior debe quedar retenido.
+3. Ejecutar el Change Set y esperar `UPDATE_COMPLETE`.
+4. Ejecutar `export-cloudformation-outputs.ps1` para obtener el nuevo Pool ID, App Client IDs y referencia del secreto.
+5. Redesplegar los siete microservicios con esos valores. Auth consume el App Client confidencial; Course, Menu, Metrics, Subscriptions, Users y Videos deben regenerar sus autorizadores API Gateway con el nuevo Pool ID.
+6. Regenerar los mapas de Amplify y cargar nuevamente las variables de las ramas.
+7. Crear otra vez el administrador inicial.
+8. Publicar y probar primero administración; después probar registro, confirmación, login, recuperación y renovación del portal público usando cédula.
+9. Verificar que `cognito:username` sea la cédula del cliente.
+10. Identificar el pool retenido anterior por el nombre `<RESOURCE_PREFIX>-users-<RESOURCE_SUFFIX>` y eliminarlo manualmente solo después de la aceptación. El pool activo se denomina `<RESOURCE_PREFIX>-identity-<RESOURCE_SUFFIX>`.
+
+Antes de aceptar la migración, consultar los autorizadores de los seis APIs protegidos y confirmar que todos sus `ProviderARNs` terminan en el `CognitoUserPoolId` activo. Un API que conserve el pool anterior responderá 401 incluso cuando el token administrativo sea válido.
+
+Durante la confirmación, `ExpiredCodeException` significa que Cognito invalidó el código aunque el correo todavía sea visible. Solicitar uno nuevo mediante `POST /auth/resend-confirmation-code` o el botón **Reenviar código**. Un reenvío invalida cualquier código previo; validar exclusivamente el último correo recibido.
 
 ## 15. Pruebas y devolución al cliente
 
