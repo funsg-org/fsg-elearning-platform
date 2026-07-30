@@ -89,6 +89,14 @@ foreach ($cognitoConsumer in @('Auth','Course','Menu','Metrics','Subscriptions',
         throw "El manual de migracion Cognito no documenta el consumidor o control '$cognitoConsumer'."
     }
 }
+$deployPlatformScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/deploy-platform.ps1') -Raw
+$environmentValidationScript = Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/validate-environment.ps1') -Raw
+if ($deployPlatformScript -notmatch 'RequirePlatformOutputs\s+-SkipServiceOutputs') {
+    throw 'El despliegue debe omitir outputs historicos de servicios durante la validacion intermedia de plataforma.'
+}
+if ($environmentValidationScript -notmatch 'switch\]\$SkipServiceOutputs') {
+    throw 'El validador de ambiente no permite separar la validacion de plataforma y servicios.'
+}
 $publicSubscriptionClient = @(
     Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/infraestructure/repository/UserCoursesRepository.js') -Raw
     Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/application/servicesUserCourses/UserProgressService.js') -Raw

@@ -238,7 +238,7 @@ $sharedChangeSetArguments = @{ StackName=$StackName; TemplateFile=$templateFile;
 $exportPlatformArguments = @{ StackName = $StackName; Environment = $Environment; Region = $Region; OutputFile = $platformOutputsFile }
 if (-not [string]::IsNullOrWhiteSpace($AwsProfile)) { $exportPlatformArguments.AwsProfile = $AwsProfile }
 & (Join-Path $PSScriptRoot 'export-cloudformation-outputs.ps1') @exportPlatformArguments
-& (Join-Path $PSScriptRoot 'validate-environment.ps1') -EnvironmentName $Environment -OutputsFile $platformOutputsFile -RequirePlatformOutputs
+& (Join-Path $PSScriptRoot 'validate-environment.ps1') -EnvironmentName $Environment -OutputsFile $platformOutputsFile -RequirePlatformOutputs -SkipServiceOutputs
 
 . (Join-Path $PSScriptRoot 'load-environment.ps1') -EnvironmentName $Environment -OutputsFile $platformOutputsFile -Quiet | Out-Null
 $recoveryRunDirectory=Join-Path $repositoryRoot ("artifacts\recovery\$Environment\"+(Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss'))

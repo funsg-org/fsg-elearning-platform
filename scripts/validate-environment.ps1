@@ -5,7 +5,8 @@ param(
     [string]$OutputsFile,
     [string]$ServiceOutputsFile,
     [switch]$RequirePlatformOutputs,
-    [switch]$RequireServiceOutputs
+    [switch]$RequireServiceOutputs,
+    [switch]$SkipServiceOutputs
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,7 +87,7 @@ $serviceOutputsFileExists = Test-Path -LiteralPath $ServiceOutputsFile -PathType
 if ($RequireServiceOutputs -and -not $serviceOutputsFileExists) {
     $errors.Add("No se encontró el contrato generado de servicios: $ServiceOutputsFile.")
 }
-if ($RequireServiceOutputs -or $serviceOutputsFileExists) {
+if (-not $SkipServiceOutputs -and ($RequireServiceOutputs -or $serviceOutputsFileExists)) {
     foreach ($variable in $serviceOutputVariables) {
         $value = [Environment]::GetEnvironmentVariable($variable, 'Process')
         if ([string]::IsNullOrWhiteSpace($value) -or $value -match '^<.*>$') {
