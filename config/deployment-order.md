@@ -2,7 +2,7 @@
 
 > Paso previo nuevo: crear primero el stack `amplify-hosting.yml` con auto-build desactivado. Sus URLs permiten reemplazar el CORS provisional antes de desplegar la infraestructura compartida. La activación de builds ocurre solamente al final y de forma explícita; consulte `config/amplify-hosting.md`.
 
-El script `scripts/deploy-platform.ps1` implementa el orden reproducible completo para una cuenta AWS ya creada: Amplify sin builds, CORS, infraestructura compartida, microservicios, migración inicial opcional del menú y variables públicas de los frontends.
+El script `scripts/deploy-platform.ps1` implementa la parte automatizada y reproducible para una cuenta AWS ya creada: Amplify sin builds, CORS, infraestructura compartida, microservicios, migración inicial opcional del menú y variables públicas de los frontends. Por diseño no crea personas administradoras ni inicia builds.
 
 ## Vista previa segura
 
@@ -58,6 +58,20 @@ Los siete microservicios fijan el paquete npm `serverless` en `4.39.0` y declara
 - Rechaza `CostCenterTag=PENDING` y URLs que no sean orígenes HTTPS predeterminados de Amplify.
 
 Al finalizar, las variables quedan cargadas en ambas ramas de preparación. La publicación requiere el comando explícito documentado en `config/amplify-hosting.md`.
+
+## Cierre manual obligatorio
+
+Después de que `deploy-platform.ps1` termine correctamente:
+
+1. Revisar los mapas `config/amplify-client-<ambiente>-env.json` y `config/amplify-admin-<ambiente>-env.json`.
+2. Iniciar el build administrativo y esperar `SUCCEED`.
+3. Crear o actualizar el administrador con `create-initial-cognito-administrator.ps1`.
+4. Confirmar que el usuario esté `CONFIRMED`, habilitado y dentro del grupo administrativo del ambiente.
+5. Probar el login administrativo y las APIs protegidas.
+6. Iniciar el build del portal público únicamente después de aprobar el punto anterior.
+7. Probar registro, confirmación, reenvío de código, login, rutas SPA, CORS, contenido multimedia y Metrics.
+
+Un mensaje final de “Despliegue de infraestructura y microservicios completado” no significa que el ambiente esté funcionalmente aceptado: todavía deben completarse estos siete controles.
 
 Las validaciones estructurales que no requieren cuenta AWS se ejecutan también en GitHub Actions. Consulte `config/continuous-validation.md`.
 

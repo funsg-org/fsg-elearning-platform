@@ -97,6 +97,22 @@ if ($deployPlatformScript -notmatch 'RequirePlatformOutputs\s+-SkipServiceOutput
 if ($environmentValidationScript -notmatch 'switch\]\$SkipServiceOutputs') {
     throw 'El validador de ambiente no permite separar la validacion de plataforma y servicios.'
 }
+$deploymentOrder = Get-Content -LiteralPath (Join-Path $repositoryRoot 'config/deployment-order.md') -Raw
+foreach ($requiredCloseoutControl in @(
+    'create-initial-cognito-administrator.ps1',
+    'CONFIRMED',
+    'build administrativo',
+    'portal público únicamente después'
+)) {
+    if ($deploymentOrder -notmatch [regex]::Escape($requiredCloseoutControl)) {
+        throw "El orden de despliegue no documenta el control final '$requiredCloseoutControl'."
+    }
+}
+$adminCreationPosition = $providerManual.IndexOf('ejecutar obligatoriamente la sección 14')
+$publicBuildPosition = $providerManual.IndexOf('### 13.5 Publicar después el portal público')
+if ($adminCreationPosition -lt 0 -or $publicBuildPosition -lt 0 -or $adminCreationPosition -gt $publicBuildPosition) {
+    throw 'El manual del proveedor debe exigir el administrador antes del build público.'
+}
 $publicSubscriptionClient = @(
     Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/infraestructure/repository/UserCoursesRepository.js') -Raw
     Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/application/servicesUserCourses/UserProgressService.js') -Raw

@@ -485,7 +485,9 @@ aws amplify get-job `
   --output table
 ```
 
-Repetir `get-job` hasta obtener `SUCCEED`. Si termina en `FAILED` o `CANCELLED`, detenerse y revisar el log del job en Amplify. No publicar el portal público. Con el administrativo exitoso, validar login Cognito, pertenencia al grupo administrador y consumo de las siete APIs.
+Repetir `get-job` hasta obtener `SUCCEED`. Si termina en `FAILED` o `CANCELLED`, detenerse y revisar el log del job en Amplify. No publicar todavía el portal público.
+
+Con el build administrativo exitoso, ejecutar obligatoriamente la sección 14 para crear o actualizar el administrador inicial. Después comprobar su estado `CONFIRMED`, que esté habilitado y que pertenezca a `<RESOURCE_PREFIX>-administrators-<ENVIRONMENT>`. Solo entonces validar login Cognito y consumo de las siete APIs. La publicación del portal público de la sección 13.5 queda bloqueada mientras no exista y funcione este administrador.
 
 ### 13.5 Publicar después el portal público
 
@@ -547,7 +549,7 @@ Resumen de control:
 2. Confirmar `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_ADMINISTRATORS_GROUP` en el administrativo.
 3. Mantener Client Secret fuera de variables Vite.
 4. Iniciar primero el build administrativo.
-5. Validar login y APIs.
+5. Crear o actualizar el administrador inicial según la sección 14 y validar estado, grupo, login y APIs.
 6. Iniciar después el build público.
 7. Registrar IDs de jobs y resultados.
 
