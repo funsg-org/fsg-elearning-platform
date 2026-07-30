@@ -566,12 +566,14 @@ La modalidad de username no se modifica en sitio. Para una instalación de prueb
 2. Revisar un Change Set que cree el nuevo User Pool y reemplace los dos App Clients y el grupo; el pool anterior debe quedar retenido.
 3. Ejecutar el Change Set y esperar `UPDATE_COMPLETE`.
 4. Ejecutar `export-cloudformation-outputs.ps1` para obtener el nuevo Pool ID, App Client IDs y referencia del secreto.
-5. Redesplegar `ms-<prefijo>-auth-<ambiente>` con esos valores.
+5. Redesplegar los siete microservicios con esos valores. Auth consume el App Client confidencial; Course, Menu, Metrics, Subscriptions, Users y Videos deben regenerar sus autorizadores API Gateway con el nuevo Pool ID.
 6. Regenerar los mapas de Amplify y cargar nuevamente las variables de las ramas.
 7. Crear otra vez el administrador inicial.
 8. Publicar y probar primero administración; después probar registro, confirmación, login, recuperación y renovación del portal público usando cédula.
 9. Verificar que `cognito:username` sea la cédula del cliente.
 10. Identificar el pool retenido anterior por el nombre `<RESOURCE_PREFIX>-users-<RESOURCE_SUFFIX>` y eliminarlo manualmente solo después de la aceptación. El pool activo se denomina `<RESOURCE_PREFIX>-identity-<RESOURCE_SUFFIX>`.
+
+Antes de aceptar la migración, consultar los autorizadores de los seis APIs protegidos y confirmar que todos sus `ProviderARNs` terminan en el `CognitoUserPoolId` activo. Un API que conserve el pool anterior responderá 401 incluso cuando el token administrativo sea válido.
 
 Durante la confirmación, `ExpiredCodeException` significa que Cognito invalidó el código aunque el correo todavía sea visible. Solicitar uno nuevo mediante `POST /auth/resend-confirmation-code` o el botón **Reenviar código**. Un reenvío invalida cualquier código previo; validar exclusivamente el último correo recibido.
 

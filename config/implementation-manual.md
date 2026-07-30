@@ -215,7 +215,7 @@ Configuración inicial:
 
 El responsable de seguridad debe aceptar MFA desactivado o solicitar una fase posterior para habilitarlo y probar recuperación.
 
-La modalidad de inicio de sesión de Cognito es inmutable. Si una instalación existente fue creada con `UsernameAttributes: [email]`, no debe actualizarse como si fuera un cambio en sitio: se crea un User Pool nuevo, se regeneran App Clients y secreto, se exportan nuevamente los Outputs, se redespliega Auth, se actualizan las variables Cognito de Amplify y se recrea el administrador. El pool anterior permanece retenido hasta comprobar la migración y eliminarlo de forma explícita.
+La modalidad de inicio de sesión de Cognito es inmutable. Si una instalación existente fue creada con `UsernameAttributes: [email]`, no debe actualizarse como si fuera un cambio en sitio: se crea un User Pool nuevo, se regeneran App Clients y secreto, se exportan nuevamente los Outputs y se redespliegan los siete microservicios. Auth necesita el App Client confidencial; Course, Menu, Metrics, Subscriptions, Users y Videos deben regenerar sus autorizadores API Gateway con el nuevo Pool ID. Después se actualizan las variables Cognito de Amplify y se recrea el administrador. El pool anterior permanece retenido hasta comprobar la migración y eliminarlo de forma explícita.
 
 ## 13. Ejecutar preflight sin desplegar
 

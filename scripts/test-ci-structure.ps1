@@ -83,6 +83,12 @@ if ($authService -match "Name:\s*'username'") {
 if ($authService -notmatch 'ResendConfirmationCodeCommand') {
     throw 'Auth debe permitir reenviar un codigo de confirmacion vencido.'
 }
+$providerManual = Get-Content -LiteralPath (Join-Path $repositoryRoot 'config/provider-project-deployment-manual.md') -Raw
+foreach ($cognitoConsumer in @('Auth','Course','Menu','Metrics','Subscriptions','Users','Videos','ProviderARNs')) {
+    if ($providerManual -notmatch [regex]::Escape($cognitoConsumer)) {
+        throw "El manual de migracion Cognito no documenta el consumidor o control '$cognitoConsumer'."
+    }
+}
 $publicSubscriptionClient = @(
     Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/infraestructure/repository/UserCoursesRepository.js') -Raw
     Get-Content -LiteralPath (Join-Path $repositoryRoot 'frontends/aprendamosgye_react/src/application/servicesUserCourses/UserProgressService.js') -Raw
